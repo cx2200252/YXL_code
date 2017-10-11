@@ -86,10 +86,22 @@ namespace YXL
 
 		YXLOutStream()
 		{
+			InitializeCriticalSection(&cs);
 		}
 		~YXLOutStream()
 		{
+			DeleteCriticalSection(&cs);
 		}
+
+		void Lock()
+		{
+			EnterCriticalSection(&cs);
+		}
+		void Unlock()
+		{
+			LeaveCriticalSection(&cs);
+		}
+
 		template<typename type>
 		YXLOutStream& operator<<(type val)
 		{
@@ -125,6 +137,7 @@ namespace YXL
 		}
 
 	private:
+		CRITICAL_SECTION cs;
 	};
 
 	extern YXLOutStream<char, std::char_traits<char> > yxlout;
