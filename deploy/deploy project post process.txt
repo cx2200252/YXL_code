@@ -1,0 +1,3 @@
+del $(OutDir)BSOptimise_deploy.*
+cd ..\BSOptimise
+deploy.bat
