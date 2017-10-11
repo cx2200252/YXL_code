@@ -4,6 +4,8 @@
 #include <Windows.h>
 #include <iostream>
 #include <fstream>
+#include <vector>
+#include <map>
 
 namespace YXL
 {
@@ -126,6 +128,22 @@ namespace YXL
 	};
 
 	extern YXLOutStream<char, std::char_traits<char> > yxlout;
+
+	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m)
+	{
+		for (auto iter = m.begin(); iter != m.end(); ++iter)
+		{
+			YXL::yxlout << iter->first << '\t' << iter->second << std::endl;
+		}
+	}
+
+	template<typename val> void PrintVectorAsRows(std::vector<val>& v)
+	{
+		for (int i(0); i != v.size(); ++i)
+		{
+			YXL::yxlout << i << '\t' << v[i] << std::endl;
+		}
+	}
 
 	namespace SHA1
 	{
