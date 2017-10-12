@@ -305,4 +305,68 @@ namespace YXL
 	}
 
 	YXLOutStream<char, std::char_traits<char> > yxlout;
+
+	int UnionFind::GroupCount() const
+	{
+		return _group_cnt;
+	}
+
+	bool UnionFind::IsConnected(const int a, const int b) const
+	{
+		return Find(a) == Find(b);
+	}
+
+	int UnionFind::Find(int a) const
+	{
+		while (a != _id[a])
+		{
+			a = _id[a];
+		}
+		return a;
+	}
+
+	void UnionFind::Union(int a, int b)
+	{
+		a = Find(a);
+		b = Find(b);
+		if (a == b)
+			return;
+		if (_group_size[a] < _group_size[b])
+		{
+			std::swap(a, b);
+		}
+		_id[b] = a;
+		_group_size[a] += _group_size[b];
+		_group_size.erase(_group_size.find(b));
+		--_group_cnt;
+	}
+
+	void UnionFind::Update()
+	{
+		_group_id.resize(_id.size());
+		std::map<int, int> id_map;
+		for (int i(0); i != _id.size(); ++i)
+		{
+			int ii = Find(i);
+			if (id_map.find(ii) == id_map.end())
+			{
+				id_map[ii] = id_map.size();
+				_groups[id_map[ii]].reserve(_group_size[ii]);
+			}
+			_group_id[i] = id_map[ii];
+			_groups[id_map[ii]].push_back(i);
+		}
+
+	}
+
+	int UnionFind::GroupID(const int a) const
+	{
+		return (0 <= a&&a < _group_id.size()) ? _group_id[a] : -1;
+	}
+
+	const std::vector<int>* UnionFind::Group(const int group_id)
+	{
+		return (0 <= group_id && group_id < _group_cnt) ? &(_groups[group_id]) : nullptr;
+	}
+
 }

@@ -158,8 +158,60 @@ namespace YXL
 		}
 	}
 
+	template<typename VertexType, typename IndexType> void SavePlainObjFile(const std::string& save_path, const VertexType* vertices, const int vertex_cnt, const IndexType* face, const int face_cnt)
+	{
+		std::ofstream fout(save_path);
+		for (int i(0); i != vertex_cnt; ++i)
+		{
+			fout << "v " << vertices[0] << " " << vertices[1] << " " << vertices[2] << std::endl;
+			vertices += 3;
+		}
+		for (int i(0); i != face_cnt; ++i)
+		{
+			fout << "f ";
+			for (int j(0); j != 3; ++j)
+			{
+				fout << face[2-j]+1 << " ";
+			}
+			fout << std::endl;
+			face += 3;
+		}
+
+		fout.close();
+	}
+
 	namespace SHA1
 	{
 		std::string SHA1Digest(std::string str);
 	}
+
+	class UnionFind
+	{
+	public:
+		UnionFind(int cnt):_group_cnt(cnt), _id(std::vector<int>(cnt))
+		{
+			for (int i(0); i != cnt; ++i)
+			{
+				_id[i] = i;
+				_group_size[i] = 1;
+			}
+		}
+
+		int GroupCount() const;
+		bool IsConnected(const int a, const int b) const;
+		int Find(int a) const;
+		void Union(int a, int b);
+		void Update();
+
+		int GroupID(const int a) const;
+		const std::vector<int>* Group(const int group_id);
+		
+	private:
+		int _group_cnt;
+		std::vector<int> _id;
+		std::map<int, int> _group_size;
+		
+		std::vector<int> _group_id;
+		std::map<int, std::vector<int> > _groups;
+	};
 }
