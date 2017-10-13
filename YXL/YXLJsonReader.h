@@ -79,6 +79,22 @@ namespace YXL
 			return ret;
 		}
 
+		template<typename type> void AddMember(rapidjson::Document& doc, rapidjson::Value & jsonVal, const std::string& name, type val)
+		{
+			//jsonVal[name.c_str()].Set(val, doc.GetAllocator());
+			if (jsonVal.HasMember(name.c_str()))
+			{
+				jsonVal[name.c_str()].Set(val, doc.GetAllocator());
+			}
+			else
+			{
+				rapidjson::Value v;
+				v.Set(name.c_str(), doc.GetAllocator());
+				jsonVal.AddMember(v, val, doc.GetAllocator());
+			}
+
+		}
+
 		template<typename type>
 		struct ValueGetter {
 			static type Get(const rapidjson::Value & val) {
