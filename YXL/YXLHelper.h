@@ -7,6 +7,10 @@
 #include <vector>
 #include <map>
 
+#ifdef CV_VERSION
+#include <opencv2\opencv.hpp>
+#endif
+
 namespace YXL
 {
 	inline std::string GetCurTime()
@@ -71,6 +75,11 @@ namespace YXL
 	inline long long MakeLongLong(const int a, const int b)
 	{
 		return ((long long)a) << 32 | (long long)b;
+	}
+
+	inline std::pair<int, int> SplitLongLong(const long long l)
+	{
+		return std::make_pair((int)(l >> 32), (int)(l & 0xffffffff));
 	}
 
 	template<typename _Elem, typename _Traits>
@@ -215,3 +224,36 @@ namespace YXL
 		std::map<int, std::vector<int> > _groups;
 	};
 }
+
+
+#ifdef CV_VERSION
+namespace YXL
+{
+	inline cv::Mat ComputeMeshNormal(cv::Mat vertices, cv::Mat tris, bool is_reverse_normal)
+	{
+		using namespace std;
+		using namespace cv;
+		cv::Mat normals = Mat(vertices.size(), vertices.type(), cv::Scalar(0, 0, 0, 0));
+		for (int i(0); i != tris.rows; ++i)
+		{
+			Vec3i tri = tris.at<Vec3i>(i);
+
+			Vec3f p0 = vertices.at<Vec3f>(tri[is_reverse_normal ? 2 : 0]);
+			Vec3f p1 = vertices.at<Vec3f>(tri[1]);
+			Vec3f p2 = vertices.at<Vec3f>(tri[is_reverse_normal ? 0 : 2]);
+
+			Vec3f a = p0 - p1, b = p1 - p2, c = p2 - p0;
+			float l2a = a.dot(a), l2b = b.dot(b), l2c = c.dot(c);
+			Vec3f facenormal = a.cross(b);
+			normals.at<Vec3f>(tri[0]) += facenormal*(1.0f / (l2a*l2c));
+			normals.at<Vec3f>(tri[1]) += facenormal*(1.0f / (l2b*l2a));
+			normals.at<Vec3f>(tri[2]) += facenormal*(1.0f / (l2c*l2b));
+		}
+		for (int i(0); i != normals.rows; ++i)
+		{
+			normals.at<Vec3f>(i) = cv::normalize(normals.at<Vec3f>(i));
+		}
+		return normals;
+	}
+}
+#endif

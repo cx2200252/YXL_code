@@ -252,7 +252,7 @@ namespace YXL
 
 		template<typename type> bool ReadRapidJsonValue(type* dest, const int cnt, const rapidjson::Value& val, const std::string& name, type def_val = type(), ValueGetter<type> getter = ValueGetter<type>())
 		{
-			if (val.HasMember(name.c_str()) && val[name.c_str()].IsArray())
+			if (val.HasMember(name.c_str()) && val[name.c_str()].IsArray() && val[name.c_str()].Size() == cnt)
 			{
 				int idx(0);
 				for (auto iter = val[name.c_str()].Begin(); iter != val[name.c_str()].End() && idx < cnt; ++iter, ++idx)
@@ -267,7 +267,7 @@ namespace YXL
 			}
 			else
 			{
-				return def_val;
+				return false;
 			}
 		}
 

@@ -1,3 +1,4 @@
+#define POINTER_64 __ptr64
 #include "YXLHelper.h"
 
 namespace YXL
