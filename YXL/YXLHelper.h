@@ -82,6 +82,20 @@ namespace YXL
 		return std::make_pair((int)(l >> 32), (int)(l & 0xffffffff));
 	}
 
+	inline void LoadFileContent(const std::string& path, std::string& content) 
+	{
+		content = "";
+		std::ifstream fin(path);
+		std::string line;
+		while (getline(fin, line))
+		{
+			content += line + "\n";
+		}
+		fin.close();
+	}
+
+	
+
 	template<typename _Elem, typename _Traits>
 	class YXLOutStream
 	{
@@ -150,6 +164,10 @@ namespace YXL
 	};
 
 	extern YXLOutStream<char, std::char_traits<char> > yxlout;
+
+#define YXL_LOG_PREFIX GetCurrentThreadId()<<"["<<__FUNCTION__<<"] "
+
+
 
 	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m)
 	{
@@ -256,4 +274,16 @@ namespace YXL
 		return normals;
 	}
 }
+#endif
+
+#ifdef HAS_CMFILE
+
+namespace YXL
+{
+	inline std::string ToAbsolutePath(const std::string& path)
+	{
+		return CmFile::GetWkDir()+"/" + path;
+	}
+}
+
 #endif

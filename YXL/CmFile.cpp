@@ -3,7 +3,7 @@
 
 
 ******************************************************/
-#define _LIB_BS_OPTIMISE_IMPL
+#define _LIB_CMFILE_IMPL
 #pragma warning(disable:4819)
 #include "CmFile.h"
 #include <shlobj.h>

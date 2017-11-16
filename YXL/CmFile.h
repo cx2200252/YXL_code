@@ -6,13 +6,7 @@
 #ifndef _CM_FILE_H_2014_4_19_
 #define _CM_FILE_H_2014_4_19_
 
-#ifndef LIB_BS_OPTIMISE
-#ifdef _LIB_BS_OPTIMISE_IMPL
-#define LIB_BS_OPTIMISE __declspec(dllexport)
-#else
-#define LIB_BS_OPTIMISE __declspec(dllimport)
-#endif
-#endif
+#define HAS_CMFILE
 
 #define POINTER_64 __ptr64
 
@@ -21,6 +15,18 @@
 #ifdef _WIN32
 #define _CRT_SECURE_NO_DEPRECATE
 //#define _CRT_SECURE_NO_WARNINGS
+#endif
+
+#ifndef CMFILE_STATIC
+#ifndef LIB_CMFILE
+#ifdef _LIB_CMFILE_IMPL
+#define LIB_CMFILE __declspec(dllexport)
+#else
+#define LIB_CMFILE __declspec(dllimport)
+#endif
+#endif
+#else
+#define LIB_CMFILE
 #endif
 
 
@@ -68,7 +74,7 @@ typedef std::vector<float> vecF;
 typedef std::vector<double> vecD;
 #define _S(str) ((str).c_str())
 
-class LIB_BS_OPTIMISE CmFile
+class LIB_CMFILE CmFile
 {
 public:
 	static std::string BrowseFile(const char* strFilter = "Images (*.jpg;*.png)\0*.jpg;*.png\0All (*.*)\0*.*\0\0", bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
@@ -91,6 +97,7 @@ public:
 	static inline bool FolderExist(CStr& strPath);
 
 	static inline std::string GetWkDir();
+	static inline void SetWkDir(CStr& dir);
 
 	static BOOL MkDir(CStr&  path);
 
@@ -208,6 +215,11 @@ std::string CmFile::GetWkDir()
 	DWORD len = GetCurrentDirectoryA(1024, &wd[0]);
 	wd.resize(len);
 	return wd;
+}
+
+void CmFile::SetWkDir(CStr& dir)
+{
+	SetCurrentDirectoryA(dir.c_str());
 }
 
 bool CmFile::FolderExist(CStr& strPath)
