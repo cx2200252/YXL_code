@@ -191,6 +191,13 @@ namespace YXL
 				}
 				fin.close();
 			}
+			void LoadFronJsonContent(const std::string& content)
+			{
+				if (_doc.Parse(content.c_str()).HasParseError())
+				{
+					std::cout << "the json content has been corrupted: " << content << std::endl;
+				}
+			}
 			void Save(const std::string& path)
 			{
 				using namespace rapidjson;
@@ -343,6 +350,10 @@ namespace YXL
 				}
 			}
 
+			rapidjson::Value& GetRoot()
+			{
+				return _doc;
+			}
 
 		private:
 			rapidjson::Document _doc;

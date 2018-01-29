@@ -94,7 +94,38 @@ namespace YXL
 		fin.close();
 	}
 
-	
+	enum FileInfo {
+		FileInfo_CreateTime,
+		FileInfo_LastAccessTime,
+		FileInfo_LastWriteTime,
+		FileInfo_FileSize
+	};
+	//return high-low
+	inline std::pair<DWORD, DWORD> GetFileInfo(const std::string& file_path, FileInfo fi)
+	{
+		WIN32_FIND_DATAA ffd;
+		HANDLE hFind = FindFirstFileA(file_path.c_str(), &ffd);
+		if (INVALID_HANDLE_VALUE == hFind)
+			return std::pair<DWORD, DWORD>(-1, -1);
+
+		std::pair<DWORD, DWORD> ret;
+		switch (fi)
+		{
+		case FileInfo_CreateTime:
+			ret = std::make_pair(ffd.ftCreationTime.dwHighDateTime, ffd.ftCreationTime.dwLowDateTime);
+			break;
+		case FileInfo_LastAccessTime:
+			ret = std::make_pair(ffd.ftLastAccessTime.dwHighDateTime, ffd.ftLastAccessTime.dwLowDateTime);
+			break;
+		case FileInfo_LastWriteTime:
+			ret = std::make_pair(ffd.ftLastWriteTime.dwHighDateTime, ffd.ftLastWriteTime.dwLowDateTime);
+			break;
+		case FileInfo_FileSize:
+			ret = std::make_pair(ffd.nFileSizeHigh, ffd.nFileSizeLow);
+			break;
+		}
+		return ret;
+	}
 
 	template<typename _Elem, typename _Traits>
 	class YXLOutStream
@@ -256,16 +287,18 @@ namespace YXL
 		{
 			Vec3i tri = tris.at<Vec3i>(i);
 
-			Vec3f p0 = vertices.at<Vec3f>(tri[is_reverse_normal ? 2 : 0]);
-			Vec3f p1 = vertices.at<Vec3f>(tri[1]);
-			Vec3f p2 = vertices.at<Vec3f>(tri[is_reverse_normal ? 0 : 2]);
+			int idx[3] = { tri[is_reverse_normal ? 2 : 0], tri[1], tri[is_reverse_normal ? 0 : 2] };
+
+			Vec3f p0 = vertices.at<Vec3f>(idx[0]);
+			Vec3f p1 = vertices.at<Vec3f>(idx[1]);
+			Vec3f p2 = vertices.at<Vec3f>(idx[2]);
 
 			Vec3f a = p0 - p1, b = p1 - p2, c = p2 - p0;
 			float l2a = a.dot(a), l2b = b.dot(b), l2c = c.dot(c);
 			Vec3f facenormal = a.cross(b);
-			normals.at<Vec3f>(tri[0]) += facenormal*(1.0f / (l2a*l2c));
-			normals.at<Vec3f>(tri[1]) += facenormal*(1.0f / (l2b*l2a));
-			normals.at<Vec3f>(tri[2]) += facenormal*(1.0f / (l2c*l2b));
+			normals.at<Vec3f>(idx[0]) += facenormal*(1.0f / (l2a*l2c));
+			normals.at<Vec3f>(idx[1]) += facenormal*(1.0f / (l2b*l2a));
+			normals.at<Vec3f>(idx[2]) += facenormal*(1.0f / (l2c*l2b));
 		}
 		for (int i(0); i != normals.rows; ++i)
 		{
