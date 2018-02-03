@@ -94,6 +94,38 @@ namespace YXL
 		fin.close();
 	}
 
+	typedef bool (*CmdLineParserCallback)(const std::string& name, const std::string& val);
+	//argv: -name=val
+	/*
+	std::multimap<std::string, std::string> params;
+	bool ParserCallback(const std::string& name, const std::string& val)
+	{
+		params.insert(std::make_pair(name, val));
+		return true;
+	}
+	CmdLineParser(argc, argv, ParserCallback);
+	*/
+	inline void CmdLineParser(int argc, char** argv, CmdLineParserCallback callback)
+	{
+		for (int i(1); i < argc; ++i)
+		{
+			std::string param = argv[i];
+			auto pos = param.find('=');
+			std::string name = "";
+			std::string val = "";
+			if (pos != std::string::npos)
+			{
+				name = param.substr(0, pos);
+				val = param.substr(pos + 1, param.length() - pos - 1);
+			}
+			else
+			{
+				name = param;
+			}
+			callback(name, val);
+		}
+	}
+
 	enum FileInfo {
 		FileInfo_CreateTime,
 		FileInfo_LastAccessTime,
@@ -200,11 +232,11 @@ namespace YXL
 
 
 
-	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m)
+	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m, const std::string& padding="")
 	{
 		for (auto iter = m.begin(); iter != m.end(); ++iter)
 		{
-			YXL::yxlout << iter->first << '\t' << iter->second << std::endl;
+			YXL::yxlout << padding<< iter->first << '\t' << iter->second << std::endl;
 		}
 	}
 

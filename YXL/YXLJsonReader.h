@@ -169,7 +169,7 @@ namespace YXL
 		class Json
 		{
 		public:
-			void Load(std::string path)
+			bool Load(std::string path)
 			{
 				std::ifstream fin(path);
 				std::string str_in;
@@ -185,18 +185,22 @@ namespace YXL
 				{
 					str_in = "{\"author\":\"yixuan lu\"}";
 				}
+				fin.close();
 				if (_doc.Parse(str_in.c_str()).HasParseError())
 				{
 					std::cout << "the project file has been corrupted: " << path << std::endl;
+					return false;
 				}
-				fin.close();
+				return true;
 			}
-			void LoadFronJsonContent(const std::string& content)
+			bool LoadFronJsonContent(const std::string& content)
 			{
 				if (_doc.Parse(content.c_str()).HasParseError())
 				{
 					std::cout << "the json content has been corrupted: " << content << std::endl;
+					return false;
 				}
+				return true;
 			}
 			void Save(const std::string& path)
 			{
@@ -342,7 +346,7 @@ namespace YXL
 				if (par.HasMember(name.c_str()) && par[name.c_str()].IsArray())
 				{
 					dest.resize(par[name.c_str()].Size());
-					return ReadRapidJsonValue(&dest[0], dest.size(), par, name, def_val, getter);
+					return ReadValue(&dest[0], dest.size(), name, def_val, par, getter);
 				}
 				else
 				{
