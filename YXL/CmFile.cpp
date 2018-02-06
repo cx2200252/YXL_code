@@ -12,6 +12,8 @@
 
 //this file is adopted from the source code provided by the author of paper "BING: Binarized Normed Gradients for Objectness Estimation at 300fps"
 
+#ifndef _NO_WINDOWS_
+
 BOOL CmFile::MkDir(CStr&  _path)
 {
 	if (_path.size() == 0)
@@ -341,3 +343,278 @@ bool CmFile::writeStrList(CStr &fName, const vecS &strs)
 	return true;
 }
 
+#else
+
+std::shared_ptr<QApplication> CmFile::_app = nullptr;
+
+//this file is adopted from the source code provided by the author of paper "BING: Binarized Normed Gradients for Objectness Estimation at 300fps"
+
+bool CmFile::MkDir(CStr&  _path)
+{
+	if (_path.size() == 0)
+		return false;
+
+	QDir dir;
+	static char buffer[1024];
+	strcpy_s(buffer, sizeof(buffer), _S(_path));
+	for (int i = 0; buffer[i] != 0; i++) {
+		if (buffer[i] == '\\' || buffer[i] == '/') {
+			buffer[i] = '\0';
+			dir.mkdir(QString::fromLocal8Bit(buffer));
+			buffer[i] = '/';
+		}
+	}
+	return dir.mkdir(QString::fromLocal8Bit(_path.c_str()));
+}
+
+std::string CmFile::BrowseFolder(CStr& title)
+{
+	auto dir = QFileDialog::getExistingDirectory(nullptr, QString::fromLocal8Bit(title.c_str()));
+	return (std::string)dir.toLocal8Bit();
+}
+
+std::string CmFile::BrowseFile(const char* strFilter, bool isOpen, const std::string& def_dir, CStr& title)
+{
+	auto wkdir = GetWkDir();
+	std::string opened_dir = wkdir + "\\" + def_dir;
+	if (false == FolderExist(opened_dir))
+	{
+		if (FolderExist(def_dir))
+		{
+			opened_dir = def_dir;
+		}
+		else
+		{
+			opened_dir = wkdir;
+		}
+	}
+
+	QString qPath;
+	if (isOpen)
+		qPath = QFileDialog::getOpenFileName(nullptr, QString::fromLocal8Bit(title.c_str()), QString::fromLocal8Bit(opened_dir.c_str()), QString::fromLocal8Bit(strFilter));
+	else
+		qPath = QFileDialog::getSaveFileName(nullptr, QString::fromLocal8Bit(title.c_str()), QString::fromLocal8Bit(opened_dir.c_str()), QString::fromLocal8Bit(strFilter));
+
+	return (std::string)qPath.toLocal8Bit();
+}
+
+int CmFile::Rename(CStr& _srcNames, CStr& _dstDir, const char *nameCommon, const char *nameExt)
+{
+	vecS names;
+	std::string inDir;
+	int fNum = GetNames(_srcNames, names, inDir);
+	for (int i = 0; i < fNum; i++) {
+		std::string dstName = cv::format("%s\\%.4d%s.%s", _S(_dstDir), i, nameCommon, nameExt);
+		std::string srcName = inDir + names[i];
+		QFile file;
+		file.rename(QString::fromLocal8Bit(srcName.c_str()), QString::fromLocal8Bit(dstName.c_str()));
+	}
+	return fNum;
+}
+
+void CmFile::RmFolder(CStr& dir)
+{
+	QDir tmp;
+	tmp.rmdir(QString::fromLocal8Bit(dir.c_str()));
+}
+
+void CmFile::CleanFolder(CStr& dir, bool subFolder)
+{
+	vecS names;
+	int fNum = CmFile::GetNames(dir + "/*.*", names);
+	for (int i = 0; i < fNum; i++)
+		RmFile(dir + "/" + names[i]);
+
+	vecS subFolders;
+	int subNum = GetSubFolders(dir, subFolders);
+	if (subFolder)
+		for (int i = 0; i < subNum; i++)
+			CleanFolder(dir + "/" + subFolders[i], true);
+}
+
+int CmFile::GetSubFolders(CStr& folder, vecS& subFolders)
+{
+	subFolders.clear();
+
+	QDir dir(QString::fromLocal8Bit(folder.c_str()));
+	foreach(QFileInfo fileInfo, dir.entryInfoList(QDir::Dirs | QDir::Files))
+	{
+		QString strName = fileInfo.fileName();
+		if ((strName == QString(".")) || (strName == QString("..")))
+			continue;
+		if (fileInfo.isDir())
+			subFolders.push_back((std::string)strName.toLocal8Bit());
+	}
+	return (int)subFolders.size();
+}
+
+// Get image names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
+int CmFile::GetNames(CStr &nameW, vecS &names, std::string &dir)
+{
+	dir = GetFolder(nameW);
+	names.clear();
+	names.reserve(6000);
+
+	QDir fromDir(QString::fromLocal8Bit(dir.c_str()));
+	QStringList filters;
+	filters.append(QString::fromLocal8Bit(nameW.substr(dir.length(), nameW.length() - dir.length()).c_str()));
+	QFileInfoList fileInfoList = fromDir.entryInfoList(filters, QDir::Dirs | QDir::Files);
+	foreach(QFileInfo fileInfo, fileInfoList)
+	{
+		if (fileInfo.fileName() == "." || fileInfo.fileName() == "..")
+			continue;
+		if (fileInfo.isFile())
+		{
+			names.push_back((std::string)fileInfo.fileName().toLocal8Bit());
+		}
+	}
+	return (int)names.size();
+}
+
+int CmFile::GetNames(CStr& rootFolder, CStr &fileW, vecS &names)
+{
+	GetNames(rootFolder + fileW, names);
+	vecS subFolders, tmpNames;
+	int subNum = CmFile::GetSubFolders(rootFolder, subFolders);
+	for (int i = 0; i < subNum; i++) {
+		subFolders[i] += "/";
+		int subNum = GetNames(rootFolder + subFolders[i], fileW, tmpNames);
+		for (int j = 0; j < subNum; j++)
+			names.push_back(subFolders[i] + tmpNames[j]);
+	}
+	return (int)names.size();
+}
+
+int CmFile::GetNamesNE(CStr& nameWC, vecS &names, std::string &dir, std::string &ext)
+{
+	int fNum = GetNames(nameWC, names, dir);
+	ext = GetExtention(nameWC);
+	for (int i = 0; i < fNum; i++)
+		names[i] = GetNameNE(names[i]);
+	return fNum;
+}
+
+int CmFile::GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names)
+{
+	int fNum = GetNames(rootFolder, fileW, names);
+	size_t extS = GetExtention(fileW).size();
+	for (int i = 0; i < fNum; i++)
+		names[i].resize(names[i].size() - extS);
+	return fNum;
+}
+
+// Load mask image and threshold thus noisy by compression can be removed
+cv::Mat CmFile::LoadMask(CStr& fileName)
+{
+	cv::Mat mask = cv::imread(fileName, CV_LOAD_IMAGE_GRAYSCALE);
+	CV_Assert_(mask.data != NULL, ("Can't find mask image: %s", _S(fileName)));
+	compare(mask, 128, mask, CV_CMP_GT);
+	return mask;
+}
+
+bool CmFile::Move2Dir(CStr &srcW, CStr dstDir)
+{
+	vecS names;
+	std::string inDir;
+	int fNum = CmFile::GetNames(srcW, names, inDir);
+	bool r = true;
+	for (int i = 0; i < fNum; i++)
+		if (Move(inDir + names[i], dstDir + names[i]) == false)
+			r = false;
+	return r;
+}
+
+bool CmFile::Copy2Dir(CStr &srcW, CStr dstDir)
+{
+	vecS names;
+	std::string inDir;
+	int fNum = CmFile::GetNames(srcW, names, inDir);
+	bool r = true;
+	for (int i = 0; i < fNum; i++)
+		if (Copy(inDir + names[i], dstDir + names[i]) == false)
+			r = false;
+	return r;
+}
+
+void CmFile::ChkImgs(CStr &imgW)
+{
+	vecS names;
+	std::string inDir;
+	int imgNum = GetNames(imgW, names, inDir);
+	printf("Checking %d images: %s\n", imgNum, _S(imgW));
+	for (int i = 0; i < imgNum; i++) {
+		cv::Mat img = cv::imread(inDir + names[i]);
+		if (img.data == NULL)
+			printf("Loading file %s failed\t\t\n", _S(names[i]));
+		if (i % 200 == 0)
+			printf("Processing %2.1f%%\r", (i*100.0) / imgNum);
+	}
+	printf("\t\t\t\t\r");
+}
+
+void CmFile::RunProgram(CStr &fileName, CStr &parameters, bool waiteF, bool showW)
+{
+	std::string runExeFile = fileName;
+#ifdef _DEBUG
+	runExeFile.insert(0, "..\\Debug\\");
+#else
+	runExeFile.insert(0, "..\\Release\\");
+#endif // _DEBUG
+	if (!CmFile::FileExist(_S(runExeFile)))
+		runExeFile = fileName;
+
+	std::string wkDir = GetWkDir();
+
+	QProcess proc;
+	QStringList param(QString::fromLocal8Bit(parameters.c_str()));
+
+	proc.start(QString::fromLocal8Bit(fileName.c_str()), param);
+
+	if (waiteF)
+		proc.waitForFinished();
+}
+
+void CmFile::SegOmpThrdNum(double ratio /* = 0.8 */)
+{
+	int thrNum = omp_get_max_threads();
+	int usedNum = cvRound(thrNum * ratio);
+	usedNum = (std::max)(usedNum, 1);
+	//CmLog::LogLine("Number of CPU cores used is %d/%d\n", usedNum, thrNum);
+	omp_set_num_threads(usedNum);
+}
+
+
+// Copy files and add suffix. e.g. copyAddSuffix("./*.jpg", "./Imgs/", "_Img.jpg")
+void CmFile::copyAddSuffix(CStr &srcW, CStr &dstDir, CStr &dstSuffix)
+{
+	vecS namesNE;
+	std::string srcDir, srcExt;
+	int imgN = CmFile::GetNamesNE(srcW, namesNE, srcDir, srcExt);
+	CmFile::MkDir(dstDir);
+	for (int i = 0; i < imgN; i++)
+		CmFile::Copy(srcDir + namesNE[i] + srcExt, dstDir + namesNE[i] + dstSuffix);
+}
+
+vecS CmFile::loadStrList(CStr &fName)
+{
+	std::ifstream fIn(fName);
+	std::string line;
+	vecS strs;
+	while (getline(fIn, line) && line.size())
+		strs.push_back(line);
+	return strs;
+}
+
+bool CmFile::writeStrList(CStr &fName, const vecS &strs)
+{
+	FILE *f;
+	fopen_s(&f, _S(fName), "w");
+	if (f == NULL)
+		return false;
+	for (size_t i = 0; i < strs.size(); i++)
+		fprintf(f, "%s\n", _S(strs[i]));
+	fclose(f);
+	return true;
+}
+
+#endif

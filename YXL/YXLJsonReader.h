@@ -1,4 +1,6 @@
 #pragma once
+#undef min
+#undef max
 #include <rapidjson\document.h>
 #include <rapidjson\prettywriter.h>
 #include <Windows.h>

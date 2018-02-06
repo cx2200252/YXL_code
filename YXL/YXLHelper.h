@@ -58,6 +58,14 @@ namespace YXL
 		return path;
 	}
 
+	inline std::string CheckPath(const std::string& str)
+	{
+		if ('/' == *str.rbegin() || '\\' == *str.rbegin())
+			return str;
+		else
+			return str + "/";
+	}
+
 	inline std::string ReplaceStrings(const std::string& str, std::map<std::string, std::string>& replace_strs)
 	{
 		std::string res = str;
@@ -347,6 +355,8 @@ namespace YXL
 {
 	inline std::string ToAbsolutePath(const std::string& path)
 	{
+		if (path.length() > 2 && path[1] == ':')
+			return path;
 		return CmFile::GetWkDir()+"/" + path;
 	}
 }

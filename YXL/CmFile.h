@@ -29,13 +29,21 @@
 #define LIB_CMFILE
 #endif
 
-
 #include <string>
 #include <vector>
-#include <Windows.h>
 #include <omp.h>
 #include <fstream>
 #include <opencv2\opencv.hpp>
+#include <memory>
+
+#ifndef _NO_WINDOWS_
+#include <Windows.h>
+#else
+#include <qdir.h>
+#include <QtWidgets\qfiledialog.h>
+#include <qprocess.h>
+#include <QtWidgets\QApplication.h>
+#endif
 
 //this file is adopted from the source code provided by the author of paper "BING: Binarized Normed Gradients for Objectness Estimation at 300fps"
 
@@ -74,6 +82,7 @@ typedef std::vector<float> vecF;
 typedef std::vector<double> vecD;
 #define _S(str) ((str).c_str())
 
+#ifndef _NO_WINDOWS_
 class LIB_CMFILE CmFile
 {
 public:
@@ -132,6 +141,7 @@ public:
 	static vecS loadStrList(CStr &fName);
 	static bool writeStrList(CStr &fName, const vecS &strs);
 };
+
 
 
 /************************************************************************/
@@ -239,5 +249,183 @@ bool CmFile::FolderExist(CStr& strPath)
 /************************************************************************/
 /*                   Implementations                                    */
 /************************************************************************/
+#else
+class LIB_CMFILE CmFile
+{
+public:
+	static void InitQApplication(int argc, char** argv)
+	{
+		if (nullptr == _app)
+			_app = std::shared_ptr<QApplication>(new QApplication(argc, argv));
+	}
 
+	//may need call CmFile::InitQApplication first
+	static std::string BrowseFile(const char* strFilter = "Images (*.jpg *.png);;All (*.*)", bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
+	//may need call CmFile::InitQApplication first
+	static std::string BrowseFolder(CStr& title = "BrowseFolder");
+
+	static inline std::string GetFolder(CStr& path);
+	static inline std::string GetName(CStr& path);
+	static inline std::string GetNameNE(CStr& path);
+	static inline std::string GetPathNE(CStr& path);
+
+	// Get file names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
+	static int GetNames(CStr &nameW, vecS &names, std::string &dir = std::string());
+	static int GetNames(CStr& rootFolder, CStr &fileW, vecS &names);
+	static int GetNamesNE(CStr& nameWC, vecS &names, std::string &dir = std::string(), std::string &ext = std::string());
+	static int GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names);
+	static inline std::string GetExtention(CStr name);
+
+	static inline bool FileExist(CStr& filePath);
+	static inline bool FilesExist(CStr& fileW);
+	static inline bool FolderExist(CStr& strPath);
+
+	static inline std::string GetWkDir();
+	static inline void SetWkDir(CStr& dir);
+
+	static bool MkDir(CStr&  path);
+
+	// Eg: RenameImages("D:/DogImages/*.jpg", "F:/Images", "dog", ".jpg");
+	static int Rename(CStr& srcNames, CStr& dstDir, const char* nameCommon, const char* nameExt);
+
+	static inline void RmFile(CStr& fileW);
+	static void RmFolder(CStr& dir);
+	static void CleanFolder(CStr& dir, bool subFolder = false);
+
+	static int GetSubFolders(CStr& folder, vecS& subFolders);
+
+	inline static bool Copy(CStr &src, CStr &dst);
+	inline static bool Move(CStr &src, CStr &dst);
+	static bool Move2Dir(CStr &srcW, CStr dstDir);
+	static bool Copy2Dir(CStr &srcW, CStr dstDir);
+
+	//Load mask image and threshold thus noisy by compression can be removed
+	static cv::Mat LoadMask(CStr& fileName);
+
+	static void WriteNullFile(CStr& fileName) { FILE *f; fopen_s(&f, _S(fileName), "w"); fclose(f); }
+
+	static void ChkImgs(CStr &imgW);
+
+	static void RunProgram(CStr &fileName, CStr &parameters = "", bool waiteF = false, bool showW = true);
+
+	static void SegOmpThrdNum(double ratio = 0.8);
+
+	// Copy files and add suffix. e.g. copyAddSuffix("./*.jpg", "./Imgs/", "_Img.jpg")
+	static void copyAddSuffix(CStr &srcW, CStr &dstDir, CStr &dstSuffix);
+
+	static vecS loadStrList(CStr &fName);
+	static bool writeStrList(CStr &fName, const vecS &strs);
+
+private:
+	static std::shared_ptr<QApplication> _app;
+};
+
+
+/************************************************************************/
+/* Implementation of inline functions                                   */
+/************************************************************************/
+std::string CmFile::GetFolder(CStr& path)
+{
+	return path.substr(0, path.find_last_of("\\/") + 1);
+}
+
+std::string CmFile::GetName(CStr& path)
+{
+	size_t start = path.find_last_of("\\/") + 1;
+	size_t end = path.find_last_not_of(' ') + 1;
+	return path.substr(start, end - start);
+}
+
+std::string CmFile::GetNameNE(CStr& path)
+{
+	size_t start = path.find_last_of("\\/") + 1;
+	size_t end = path.find_last_of('.');
+	if (end >= 0)
+		return path.substr(start, end - start);
+	else
+		return path.substr(start, path.find_last_not_of(' ') + 1 - start);
+}
+
+std::string CmFile::GetPathNE(CStr& path)
+{
+	size_t end = path.find_last_of('.');
+	if (end >= 0)
+		return path.substr(0, end);
+	else
+		return path.substr(0, path.find_last_not_of(' ') + 1);
+}
+
+std::string CmFile::GetExtention(CStr name)
+{
+	return name.substr(name.find_last_of('.'));
+}
+
+bool CmFile::Copy(CStr &src, CStr &dst)
+{
+	QFile f;
+	return f.copy(QString::fromStdString(src), QString::fromStdString(dst));
+}
+
+bool CmFile::Move(CStr &src, CStr &dst)
+{
+	QFile f;
+	return f.copy(QString::fromStdString(src), QString::fromStdString(dst));
+}
+
+void CmFile::RmFile(CStr& fileW)
+{
+	vecS names;
+	std::string dir;
+	int fNum = CmFile::GetNames(fileW, names, dir);
+	for (int i = 0; i < fNum; i++)
+	{
+		QFile f(QString::fromStdString(dir + names[i]));
+		f.remove();
+	}
+}
+
+// Test whether a file exist
+bool CmFile::FileExist(CStr& filePath)
+{
+	if (filePath.size() == 0)
+		return false;
+
+	QFile file(QString::fromStdString(filePath));
+	return file.exists();
+}
+
+bool CmFile::FilesExist(CStr& fileW)
+{
+	vecS names;
+	int fNum = GetNames(fileW, names);
+	return fNum > 0;
+}
+
+std::string CmFile::GetWkDir()
+{
+	QDir dir;
+	return dir.currentPath().toStdString();
+}
+
+void CmFile::SetWkDir(CStr& dir)
+{
+	QDir tmp;
+	tmp.setCurrent(QString::fromStdString(dir));
+}
+
+bool CmFile::FolderExist(CStr& strPath)
+{
+	int i = (int)strPath.size() - 1;
+	for (; i >= 0 && (strPath[i] == '\\' || strPath[i] == '/'); i--)
+		;
+	std::string str = strPath.substr(0, i + 1);
+
+	QDir dir(QString::fromStdString(str));;
+	return dir.exists();
+}
+
+/************************************************************************/
+/*                   Implementations                                    */
+/************************************************************************/
+#endif
 #endif
