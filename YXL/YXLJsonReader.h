@@ -71,7 +71,7 @@ namespace YXL
 
 		template<typename type>
 		struct ValueParser {
-			type Parse(const type& val, rapidjson::Document& doc) {
+			type& Parse(type& val, rapidjson::Document& doc) {
 				return val;
 			}
 		};
@@ -237,7 +237,7 @@ namespace YXL
 
 
 			//write (overwrite)
-			template<typename type> void SetMember(const std::string& name, type val, rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueParser<type> parser = ValueParser<type>())
+			template<typename type> void SetMember(const std::string& name, type& val, rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueParser<type> parser = ValueParser<type>())
 			{
 				rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
 				if (par.HasMember(name.c_str()))
@@ -271,7 +271,7 @@ namespace YXL
 
 			//write (append)
 
-			template<typename type> void AddMember(const std::string& name, type val, rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueParser<type> parser = ValueParser<type>())
+			template<typename type> void AddMember(const std::string& name, type& val, rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueParser<type> parser = ValueParser<type>())
 			{
 				rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
 				rapidjson::Value v;
@@ -357,6 +357,10 @@ namespace YXL
 			}
 
 			rapidjson::Value& GetRoot()
+			{
+				return _doc;
+			}
+			rapidjson::Document& GetDoc()
 			{
 				return _doc;
 			}

@@ -256,6 +256,18 @@ namespace YXL
 		}
 	}
 
+	template<typename val> void PrintVector(std::vector<val>& v)
+	{
+		YXL::yxlout << "[";
+		for (int i(0); i != v.size(); ++i)
+		{
+			if (i)
+				YXL::yxlout << ",";
+			YXL::yxlout << v[i];
+		}
+		YXL::yxlout << "]" << std::endl;
+	}
+
 	template<typename VertexType, typename IndexType> void SavePlainObjFile(const std::string& save_path, const VertexType* vertices, const int vertex_cnt, const IndexType* face, const int face_cnt)
 	{
 		std::ofstream fout(save_path);
