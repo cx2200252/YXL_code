@@ -3,17 +3,25 @@
 #undef max
 #include <rapidjson\document.h>
 #include <rapidjson\prettywriter.h>
-#include <Windows.h>
 #include <fstream>
 #include <string>
 #include <vector>
 #include <iostream>
 #include <YXLHelper.h>
 
+#ifndef _NO_WINDOWS_
+#include <Windows.h>
+#else
+#include <qstring.h>
+#include <QTextCodec.h>
+#endif
+
 namespace YXL
 {
 	namespace JSON
 	{
+
+#ifndef _NO_WINDOWS_
 		inline std::string UTF8ToGBK(std::string utf8)
 		{
 			wchar_t * lpUnicodeStr = NULL;
@@ -68,6 +76,25 @@ namespace YXL
 
 			return ret;
 		}
+#else
+		inline std::string UTF8ToGBK(std::string utf8)
+		{
+			QTextCodec *gbk_codec = QTextCodec::codecForName("gbk");
+			QTextCodec *utf8_codec = QTextCodec::codecForName("UTF-8");
+			auto tmp = utf8_codec->toUnicode(utf8.c_str());
+			auto ret = gbk_codec->fromUnicode(tmp);
+			return ret.data();
+		}
+
+		inline std::string GBKToUTF8(std::string gbk)
+		{
+			QTextCodec *gbk_codec = QTextCodec::codecForName("gbk");
+			QTextCodec *utf8_codec = QTextCodec::codecForName("UTF-8");
+			auto tmp = gbk_codec->toUnicode(gbk.c_str());
+			auto ret = utf8_codec->fromUnicode(tmp);
+			return ret.data();
+		}
+#endif
 
 		template<typename type>
 		struct ValueParser {
