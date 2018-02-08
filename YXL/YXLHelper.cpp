@@ -1,5 +1,7 @@
 #define POINTER_64 __ptr64
 #include "YXLHelper.h"
+#include <memory>
+#ifndef _NO_WINDOWS_
 
 namespace YXL
 {
@@ -305,8 +307,8 @@ namespace YXL
 		}
 	}
 
-	YXLOutStream<char, std::char_traits<char> > yxlout;
 
+	YXLOutStream<char, std::char_traits<char> > yxlout;
 	int UnionFind::GroupCount() const
 	{
 		return _group_cnt;
@@ -370,4 +372,7 @@ namespace YXL
 		return (0 <= group_id && group_id < _group_cnt) ? &(_groups[group_id]) : nullptr;
 	}
 
+
 }
+
+#endif

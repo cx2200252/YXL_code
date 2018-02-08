@@ -1,19 +1,19 @@
 #pragma once
 #undef min
 #undef max
-#include <rapidjson\document.h>
-#include <rapidjson\prettywriter.h>
+#include <rapidjson/document.h>
+#include <rapidjson/prettywriter.h>
 #include <fstream>
 #include <string>
 #include <vector>
 #include <iostream>
-#include <YXLHelper.h>
+#include "YXLHelper.h"
 
 #ifndef _NO_WINDOWS_
 #include <Windows.h>
 #else
-#include <qstring.h>
-#include <QTextCodec.h>
+#include <QString>
+#include <QTextCodec>
 #endif
 
 namespace YXL
@@ -189,7 +189,9 @@ namespace YXL
 			}
 			static bool IsType(const rapidjson::Value & val)
 			{
+#ifndef _NO_WINDOWS_
 				YXL::yxlout << YXL_LOG_PREFIX << "const char* not supported..." << std::endl;
+#endif
 				return false;
 			}
 		};
@@ -243,77 +245,96 @@ namespace YXL
 				fout.close();
 			}
 
-			rapidjson::Value& GetValue(const std::string& name, rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType))
+			rapidjson::Value& GetValue(const std::string& name, rapidjson::Value& parent)
 			{
-				rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
-				if (false == par.HasMember(name.c_str()))
+				if (false == parent.HasMember(name.c_str()))
 				{
 					return _none_val;
 				}
-				return par[name.c_str()];
+				return parent[name.c_str()];
 			}
 
-			void AddValue(const std::string& name, rapidjson::Value& val, rapidjson::Value& parent=rapidjson::Value(rapidjson::Type::kNullType))
+			rapidjson::Value& GetValue(const std::string& name)
 			{
-				rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
+				return GetValue(name, _doc);
+			}
 
+			void AddValue(const std::string& name, rapidjson::Value& val, rapidjson::Value& parent)
+			{
 				rapidjson::Value v;
 				v.Set(name.c_str(), _doc.GetAllocator());
-				par.AddMember(v, val, _doc.GetAllocator());
+				parent.AddMember(v, val, _doc.GetAllocator());
 			}
 
+			void AddValue(const std::string& name, rapidjson::Value& val)
+			{
+				AddValue(name, val, _doc);
+			}
 
 			//write (overwrite)
-			template<typename type> void SetMember(const std::string& name, type& val, rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueParser<type> parser = ValueParser<type>())
+			template<typename type> void SetMember(const std::string& name, type& val, rapidjson::Value& parent)
 			{
-				rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
-				if (par.HasMember(name.c_str()))
+				if (parent.HasMember(name.c_str()))
 				{
-					par.RemoveMember(name.c_str());
+					parent.RemoveMember(name.c_str());
 				}
-				AddMember(name, val, parent, parser);
+				AddMember(name, val, parent);
 			}
 
-			template<typename type> bool SetMemberArray(const std::string& name, type* vals, const int cnt, rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueParser<type> parser = ValueParser<type>())
+			template<typename type> void SetMember(const std::string& name, type& val)
+			{
+				SetMember(name, val, _doc);
+			}
+
+			template<typename type> bool SetMemberArray(const std::string& name, type* vals, const int cnt, rapidjson::Value& parent)
 			{
 				if (0 >= cnt)
-				{
 					return false;
-				}
 
-				rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
+				if (parent.HasMember(name.c_str()))
+					parent.RemoveMember(name.c_str());
 
-				if (par.HasMember(name.c_str()))
-				{
-					par.RemoveMember(name.c_str());
-				}
-
-				return AddMemberArray(name, vals, cnt, parent, parser);
+				return AddMemberArray(name, vals, cnt, parent);
 			}
 
-			template<typename type> bool SetMemberArray(const std::string& name, std::vector<type>& vals, rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueParser<type> parser = ValueParser<type>())
+			template<typename type> bool SetMemberArray(const std::string& name, type* vals, const int cnt)
 			{
-				return SetMemberArray(name, &vals[0], vals.size(), parent, parser);
+				return AddMemberArray(name, vals, cnt, _doc);
+			}
+
+			template<typename type> bool SetMemberArray(const std::string& name, std::vector<type>& vals, rapidjson::Value& parent)
+			{
+				return SetMemberArray(name, &vals[0], vals.size(), parent);
+			}
+
+			template<typename type> bool SetMemberArray(const std::string& name, std::vector<type>& vals)
+			{
+				return SetMemberArray(name, vals, _doc);
 			}
 
 			//write (append)
 
-			template<typename type> void AddMember(const std::string& name, type& val, rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueParser<type> parser = ValueParser<type>())
+			template<typename type> void AddMember(const std::string& name, type& val, rapidjson::Value& parent)
 			{
-				rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
 				rapidjson::Value v;
 				v.Set(name.c_str(), _doc.GetAllocator());
-				par.AddMember(v, parser.Parse(val, _doc), _doc.GetAllocator());
+				ValueParser<type> parser = ValueParser<type>();
+				parent.AddMember(v, parser.Parse(val, _doc), _doc.GetAllocator());
 			}
 
-			template<typename type> bool AddMemberArray(const std::string& name, type* vals, const int cnt, rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueParser<type> parser = ValueParser<type>())
+			template<typename type> void AddMember(const std::string& name, type& val)
+			{
+				AddMember(name, val, _doc);
+			}
+
+			template<typename type> bool AddMemberArray(const std::string& name, type* vals, const int cnt, rapidjson::Value& parent)
 			{
 				if (0 >= cnt)
 				{
 					return false;
 				}
-				rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
 
+				ValueParser<type> parser = ValueParser<type>();
 				rapidjson::Value v(rapidjson::Type::kArrayType);
 				for (int i(0); i != cnt; ++i)
 				{
@@ -323,19 +344,30 @@ namespace YXL
 				{
 					rapidjson::Value key;
 					key.Set(name.c_str(), _doc.GetAllocator());
-					par.AddMember(key, v, _doc.GetAllocator());
+					parent.AddMember(key, v, _doc.GetAllocator());
 				}
 				return true;
 			}
 
-			template<typename type> bool AddMemberArray(const std::string& name, std::vector<type>& vals, rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueParser<type> parser = ValueParser<type>())
+			template<typename type> bool AddMemberArray(const std::string& name, type* vals, const int cnt)
 			{
-				return AddMemberArray(name, &vals[0], (int)vals.size(), parent, parser);
+				return AddMemberArray(name, vals, cnt, _doc);
+			}
+
+			template<typename type> bool AddMemberArray(const std::string& name, std::vector<type>& vals, rapidjson::Value& parent)
+			{
+				return AddMemberArray(name, &vals[0], (int)vals.size(), parent);
+			}
+
+			template<typename type> bool AddMemberArray(const std::string& name, std::vector<type>& vals)
+			{
+				return AddMemberArray(name, vals, _doc);
 			}
 
 			//read
-			template<typename type> type ReadValue(const std::string& name, type def_val = type(), const rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueGetter<type> getter = ValueGetter<type>())
+			template<typename type> type ReadValue(const std::string& name, type def_val = type(), const rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType))
 			{
+				ValueGetter<type> getter = ValueGetter<type>();
 				const rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
 				if (par.HasMember(name.c_str()) && getter.IsType(par[name.c_str()]))
 				{
@@ -347,8 +379,9 @@ namespace YXL
 				}
 			}
 
-			template<typename type> bool ReadValue(type* dest, const int cnt, const std::string& name, type def_val = type(), const rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueGetter<type> getter = ValueGetter<type>())
+			template<typename type> bool ReadValue(type* dest, const int cnt, const std::string& name, type def_val = type(), const rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType))
 			{
+				ValueGetter<type> getter = ValueGetter<type>();
 				const rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
 				if (par.HasMember(name.c_str()) && par[name.c_str()].IsArray() && par[name.c_str()].Size() == cnt)
 				{
@@ -369,13 +402,13 @@ namespace YXL
 				}
 			}
 
-			template<typename type> bool ReadValue(std::vector<type>& dest, const std::string& name, type def_val = type(), rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType), ValueGetter<type> getter = ValueGetter<type>())
+			template<typename type> bool ReadValue(std::vector<type>& dest, const std::string& name, type def_val = type(), const rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType))
 			{
 				const rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
 				if (par.HasMember(name.c_str()) && par[name.c_str()].IsArray())
 				{
 					dest.resize(par[name.c_str()].Size());
-					return ReadValue(&dest[0], dest.size(), name, def_val, par, getter);
+					return ReadValue(&dest[0], dest.size(), name, def_val, par);
 				}
 				else
 				{

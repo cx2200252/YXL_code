@@ -33,16 +33,22 @@
 #include <vector>
 #include <omp.h>
 #include <fstream>
-#include <opencv2\opencv.hpp>
+#include <opencv2/opencv.hpp>
 #include <memory>
 
 #ifndef _NO_WINDOWS_
 #include <Windows.h>
 #else
 #include <qdir.h>
-#include <QtWidgets\qfiledialog.h>
 #include <qprocess.h>
-#include <QtWidgets\QApplication.h>
+
+#ifdef _CLOUD_VER_
+#include <QFileDialog>
+#include <QApplication>
+#else
+#include <QtWidgets/qfiledialog.h>
+#include <QtWidgets/QApplication.h>
+#endif
 #endif
 
 //this file is adopted from the source code provided by the author of paper "BING: Binarized Normed Gradients for Objectness Estimation at 300fps"
@@ -270,9 +276,9 @@ public:
 	static inline std::string GetPathNE(CStr& path);
 
 	// Get file names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
-	static int GetNames(CStr &nameW, vecS &names, std::string &dir = std::string());
+	static int GetNames(CStr &nameW, vecS &names, std::string &dir);
 	static int GetNames(CStr& rootFolder, CStr &fileW, vecS &names);
-	static int GetNamesNE(CStr& nameWC, vecS &names, std::string &dir = std::string(), std::string &ext = std::string());
+	static int GetNamesNE(CStr& nameWC, vecS &names, std::string &dir, std::string &ext);
 	static int GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names);
 	static inline std::string GetExtention(CStr name);
 
@@ -302,7 +308,7 @@ public:
 	//Load mask image and threshold thus noisy by compression can be removed
 	static cv::Mat LoadMask(CStr& fileName);
 
-	static void WriteNullFile(CStr& fileName) { FILE *f; fopen_s(&f, _S(fileName), "w"); fclose(f); }
+	static void WriteNullFile(CStr& fileName) { FILE *f = fopen(_S(fileName), "w"); fclose(f); }
 
 	static void ChkImgs(CStr &imgW);
 
@@ -397,7 +403,8 @@ bool CmFile::FileExist(CStr& filePath)
 bool CmFile::FilesExist(CStr& fileW)
 {
 	vecS names;
-	int fNum = GetNames(fileW, names);
+	std::string dir;
+	int fNum = GetNames(fileW, names, dir);
 	return fNum > 0;
 }
 

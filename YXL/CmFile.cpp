@@ -6,9 +6,11 @@
 #define _LIB_CMFILE_IMPL
 #pragma warning(disable:4819)
 #include "CmFile.h"
+#ifndef _NO_WINDOWS_
 #include <shlobj.h>
 #include <Commdlg.h>
 #include <ShellAPI.h>
+#endif
 
 //this file is adopted from the source code provided by the author of paper "BING: Binarized Normed Gradients for Objectness Estimation at 300fps"
 
@@ -356,7 +358,7 @@ bool CmFile::MkDir(CStr&  _path)
 
 	QDir dir;
 	static char buffer[1024];
-	strcpy_s(buffer, sizeof(buffer), _S(_path));
+	strcpy(buffer, _S(_path));
 	for (int i = 0; buffer[i] != 0; i++) {
 		if (buffer[i] == '\\' || buffer[i] == '/') {
 			buffer[i] = '\0';
@@ -421,7 +423,8 @@ void CmFile::RmFolder(CStr& dir)
 void CmFile::CleanFolder(CStr& dir, bool subFolder)
 {
 	vecS names;
-	int fNum = CmFile::GetNames(dir + "/*.*", names);
+	std::string tmp;
+	int fNum = CmFile::GetNames(dir + "/*.*", names, tmp);
 	for (int i = 0; i < fNum; i++)
 		RmFile(dir + "/" + names[i]);
 
@@ -473,7 +476,8 @@ int CmFile::GetNames(CStr &nameW, vecS &names, std::string &dir)
 
 int CmFile::GetNames(CStr& rootFolder, CStr &fileW, vecS &names)
 {
-	GetNames(rootFolder + fileW, names);
+	std::string dir;
+	GetNames(rootFolder + fileW, names, dir);
 	vecS subFolders, tmpNames;
 	int subNum = CmFile::GetSubFolders(rootFolder, subFolders);
 	for (int i = 0; i < subNum; i++) {
@@ -607,8 +611,7 @@ vecS CmFile::loadStrList(CStr &fName)
 
 bool CmFile::writeStrList(CStr &fName, const vecS &strs)
 {
-	FILE *f;
-	fopen_s(&f, _S(fName), "w");
+	FILE *f = fopen(_S(fName), "w");
 	if (f == NULL)
 		return false;
 	for (size_t i = 0; i < strs.size(); i++)

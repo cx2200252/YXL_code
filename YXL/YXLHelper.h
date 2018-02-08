@@ -1,15 +1,17 @@
 #pragma once
 #include <string>
 #include <map>
-#include <Windows.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <map>
 
 #ifdef CV_VERSION
-#include <opencv2\opencv.hpp>
+#include <opencv2/opencv.hpp>
 #endif
+
+#ifndef _NO_WINDOWS_
+#include <Windows.h>
 
 namespace YXL
 {
@@ -326,6 +328,9 @@ namespace YXL
 	};
 }
 
+#else
+
+#endif
 
 #ifdef CV_VERSION
 namespace YXL
