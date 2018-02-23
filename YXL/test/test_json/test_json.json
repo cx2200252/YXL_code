@@ -1,0 +1,40 @@
+{
+    "author": "yixuan lu",
+    "float": 2.0,
+    "obj": {
+        "string": "string0",
+        "string2": "卢奕渲"
+    },
+    "array": [
+        0,
+        1,
+        2
+    ],
+    "array2": [
+        0,
+        1,
+        2
+    ],
+    "test_node": [
+        {
+            "f": 0.0,
+            "i": 1,
+            "s": "abc",
+            "vecI": [
+                2,
+                3,
+                4
+            ]
+        },
+        {
+            "f": 5.0,
+            "i": 6,
+            "s": "def",
+            "vecI": [
+                7,
+                8,
+                9
+            ]
+        }
+    ]
+}

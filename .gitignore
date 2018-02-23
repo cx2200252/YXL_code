@@ -1,0 +1,7 @@
+**/Debug/*
+**/Release/*
+*.db
+*.opendb
+**/.vs/*
+**/test_josn.json
+YXLOut.txt

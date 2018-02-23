@@ -254,7 +254,7 @@ namespace YXL
 	{
 		for (int i(0); i != v.size(); ++i)
 		{
-			YXL::yxlout << i << '\t' << v[i] << std::endl;
+			YXL::yxlout << i << ':\t' << v[i] << std::endl;
 		}
 	}
 
