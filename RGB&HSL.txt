@@ -1,3 +1,5 @@
+//author: yixuan, lu
+
 vec3 RGB2HSL(vec3 rgb)
 {
 	float _min=min(rgb.r, min(rgb.g, rgb.b));
