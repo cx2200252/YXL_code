@@ -85,7 +85,7 @@ namespace YXL
 
 		template<typename type>
 		struct ValueParser {
-			const type& Parse(const type& val, rapidjson::Document& doc) 
+			static const type& Parse(const type& val, rapidjson::Document& doc) 
 			{
 				return val;
 			}
@@ -93,22 +93,20 @@ namespace YXL
 
 		template<typename type>
 		struct ValueParser<std::vector<type> > {
-			rapidjson::Value Parse(const std::vector<type>& vals, rapidjson::Document& doc)
+			static rapidjson::Value Parse(const std::vector<type>& vals, rapidjson::Document& doc)
 			{
 				rapidjson::Value ret(rapidjson::Type::kArrayType);
-				ValueParser<type> parser;
 				for (auto val : vals)
-					ret.PushBack(parser.Parse(val, doc), doc.GetAllocator());
+					ret.PushBack(ValueParser<type>::Parse(val, doc), doc.GetAllocator());
 				return ret;
 			}
 		};
 
 		template<>
 		struct ValueParser<std::string> {
-			std::string str;
-			rapidjson::Value Parse(const std::string& val, rapidjson::Document& doc) 
+			static rapidjson::Value Parse(const std::string& val, rapidjson::Document& doc) 
 			{
-				str = GBKToUTF8(val);
+				auto str = GBKToUTF8(val);
 				rapidjson::Value v;
 				v.Set(str.c_str(), doc.GetAllocator());
 				return v;
@@ -117,15 +115,22 @@ namespace YXL
 
 		template<>
 		struct ValueParser<const char*> {
-			std::string str;
-			rapidjson::Value Parse(const char* val, rapidjson::Document& doc) 
+			static rapidjson::Value Parse(const char* val, rapidjson::Document& doc) 
 			{
-				str = GBKToUTF8(std::string(val));
+				auto str = GBKToUTF8(std::string(val));
 				rapidjson::Value v;
 				v.Set(str.c_str(), doc.GetAllocator());
 				return v;
 			}
 		};
+
+#define ToJsonValue(type, val, doc) YXL::JSON::ValueParser<type>::Parse(val, doc)
+#define ToJsonValueVec(type, vals, doc) YXL::JSON::ValueParser<std::vector<type> >::Parse(vals, doc)
+
+#define JsonParseStr(val, doc) ToJsonValue(std::string, val, doc)
+#define JsonParseCStr(val, doc) ToJsonValue(const char*, val, doc)
+#define JsonParseVecStr(vals, doc) ToJsonValueVec(std::string, vals, doc)
+#define JsonParseVecCStr(vals, doc) ToJsonValueVec(const char*, vals, doc)
 
 		//read
 
@@ -221,6 +226,27 @@ namespace YXL
 				return false;
 			}
 		};
+
+#define JsonValIsType(type, json_val) YXL::JSON::ValueGetter<type>::IsType(json_val)
+#define JsonValIsTypeVec(type, json_val) YXL::JSON::ValueGetter<std::vector<type> >::IsType(json_val)
+#define FromJsonValue(type, json_val) YXL::JSON::ValueGetter<type>::Get(json_val)
+#define FromJsonValueVec(type, json_val) YXL::JSON::ValueGetter<std::vector<type> >::Get(json_val)
+
+#define JsonValIsBool(json_val) JsonValIsType(bool, json_val)
+#define JsonValIsFloat(json_val) JsonValIsType(float, json_val)
+#define JsonValIsStr(json_val) JsonValIsType(std::string, json_val)
+
+#define JsonValIsBoolVec(json_val) JsonValIsTypeVec(bool, json_val)
+#define JsonValIsFloatVec(json_val) JsonValIsTypeVec(float, json_val)
+#define JsonValIsStrVec(json_val) JsonValIsTypeVec(std::string, json_val)
+
+#define JsonGetBool(json_val) FromJsonValue(bool, json_val)
+#define JsonGetFloat(json_val) FromJsonValue(float, json_val)
+#define JsonGetStr(json_val) FromJsonValue(std::string, json_val)
+
+#define JsonGetBoolVec(json_val) FromJsonValueVec(bool, json_val)
+#define JsonGetFloatVec(json_val) FromJsonValueVec(float, json_val)
+#define JsonGetStrVec(json_val) FromJsonValueVec(std::string, json_val)
 
 		//
 		class Json
@@ -349,8 +375,7 @@ namespace YXL
 			{
 				rapidjson::Value v;
 				v.Set(name.c_str(), _doc.GetAllocator());
-				ValueParser<type> parser;
-				parent.AddMember(v, parser.Parse(val, _doc), _doc.GetAllocator());
+				parent.AddMember(v, ToJsonValue(type, val, _doc), _doc.GetAllocator());
 			}
 			template<typename type> void AddMember(const std::string& name, const type& val)
 			{
@@ -360,10 +385,9 @@ namespace YXL
 			{
 				if (0 >= cnt)
 					return false;
-				ValueParser<type> parser = ValueParser<type>();
 				rapidjson::Value v(rapidjson::Type::kArrayType);
 				for (int i(0); i != cnt; ++i)
-					v.PushBack(parser.Parse(vals[i], _doc), _doc.GetAllocator());
+					v.PushBack(ToJsonValue(type, vals[i], _doc), _doc.GetAllocator());
 				rapidjson::Value key;
 				key.Set(name.c_str(), _doc.GetAllocator());
 				parent.AddMember(key, v, _doc.GetAllocator());
@@ -385,31 +409,23 @@ namespace YXL
 			//read
 			template<typename type> type ReadValue(const std::string& name, type def_val = type(), const rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType))
 			{
-				ValueGetter<type> getter = ValueGetter<type>();
 				const rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
-				if (par.HasMember(name.c_str()) && getter.IsType(par[name.c_str()]))
-				{
-					return getter.Get(par[name.c_str()]);
-				}
+				if (par.HasMember(name.c_str()) && JsonValIsType(type, par[name.c_str()]))
+					return FromJsonValue(type, par[name.c_str()]);
 				else
-				{
 					return def_val;
-				}
 			}
 			template<typename type> bool ReadValue(type* dest, const int cnt, const std::string& name, const rapidjson::Value& parent = rapidjson::Value(rapidjson::Type::kNullType))
 			{
-				ValueGetter<type> getter = ValueGetter<type>();
 				const rapidjson::Value& par = (parent.GetType() != rapidjson::Type::kNullType) ? parent : _doc;
 				if (par.HasMember(name.c_str()) && par[name.c_str()].IsArray() && par[name.c_str()].Size() == cnt)
 				{
 					int idx(0);
 					for (auto iter = par[name.c_str()].Begin(); iter != par[name.c_str()].End() && idx < cnt; ++iter, ++idx)
 					{
-						if (false == getter.IsType(*iter))
-						{
+						if (false == JsonValIsType(type, *iter))
 							return false;
-						}
-						dest[idx] = getter.Get(*iter);
+						dest[idx] = FromJsonValue(type, *iter);
 					}
 					return idx == cnt;
 				}

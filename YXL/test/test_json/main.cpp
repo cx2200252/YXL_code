@@ -14,41 +14,39 @@ namespace YXL
 {
 	namespace JSON
 	{
-		template<>
-		struct ValueParser<TestNode> {
+		template<> struct ValueParser<TestNode> 
+		{
 			std::string str;
-			rapidjson::Value Parse(const TestNode& val, rapidjson::Document& doc)
+			static rapidjson::Value Parse(const TestNode& val, rapidjson::Document& doc)
 			{
 				rapidjson::Value value(rapidjson::Type::kObjectType);
 				auto& alloc = doc.GetAllocator();
 
-				ValueParser<std::string> parseS;
-				ValueParser<std::vector<int> > parseVecI;
-
-				value.AddMember(parseS.Parse("f", doc), val.f, alloc);
-				value.AddMember(parseS.Parse("i", doc), val.i, alloc);
-				value.AddMember(parseS.Parse("s", doc), parseS.Parse(val.s, doc), alloc);
-				value.AddMember(parseS.Parse("vecI", doc), parseVecI.Parse(val.vec, doc), alloc);
+				value.AddMember(JsonParseCStr("f", doc), val.f, alloc);
+				value.AddMember(JsonParseCStr("i", doc), val.i, alloc);
+				value.AddMember(JsonParseCStr("s", doc), JsonParseStr(val.s, doc), alloc);
+				value.AddMember(JsonParseCStr("vecI", doc), ToJsonValueVec(int, val.vec, doc), alloc);
 
 				return value;
 			}
 		};
 
-		template <>
-		struct ValueGetter<TestNode> {
+		template <> struct ValueGetter<TestNode> 
+		{
 			static TestNode Get(const rapidjson::Value & val)
 			{
 				TestNode node;
 				node.f = val["f"].GetFloat();
 				node.i = val["i"].GetInt();
-				node.s = ValueGetter<std::string>::Get(val["s"]);
-				node.vec = ValueGetter<std::vector<int> >::Get(val["vecI"]);
+				node.s = JsonGetStr(val["s"]);
+				node.vec = FromJsonValueVec(int, val["vecI"]);
 				return node;
 			}
 			static bool IsType(const rapidjson::Value & val)
 			{
 				//check all members' type if necessary
-				return val.IsObject() && val.HasMember("f") && val.HasMember("i") && val.HasMember("s") && val.HasMember("vecI") && ValueGetter<std::vector<int> >::IsType(val["vecI"]);
+				return val.IsObject() && val.HasMember("f") && val.HasMember("i") && val.HasMember("s") 
+					&& val.HasMember("vecI") && JsonValIsTypeVec(int, val["vecI"]);
 			}
 		};
 	}
@@ -68,7 +66,7 @@ int main()
 		{
 			json->AddMember("float", 0.0f);//{"float":0.0}
 			json->AddMember("float", 1.0f);//{"float":0.0, "float":1.0}
-										   //will remove all member with the same name
+			//will remove all member with the same name
 			json->SetMember("float", 2.0f);//{"float":2.0}
 			auto f0 = json->ReadValue("float", -1.0f);
 			auto f1 = json->ReadValue("float1", -1.0f);//not exist, use default value (param 2)
@@ -88,10 +86,10 @@ int main()
 		//array value read/write
 		{
 			int vals[] = { 0, 1,2 };
-			std::vector<int> vecVals(vals, vals + 3);
+			std::vector<int> vecVals({3,4,5});
 
-			json->SetMember("array", vecVals);//{"float":2.0,"obj":{"string":"string0","string2":"Â¬ÞÈäÖ"},"array":[0,1,2]}
-			json->SetMember("array2", vals, 3);//{"float":2.0,"obj":{"string":"string0","string2":"Â¬ÞÈäÖ"},"array":[0,1,2],"array2":[0,1,2]}
+			json->SetMember("array", vals, 3);//{"float":2.0,"obj":{"string":"string0","string2":"Â¬ÞÈäÖ"},"array":[0,1,2]}
+			json->SetMember("array2", vecVals);//{"float":2.0,"obj":{"string":"string0","string2":"Â¬ÞÈäÖ"},"array":[0,1,2],"array2":[3,4,5]}
 
 			int vals2[3];
 			json->ReadValue(vals2, 3, "array");
@@ -121,7 +119,7 @@ int main()
 				"obj":{"string":"string0","string2":"Â¬ÞÈäÖ"},
 				"array":[0,1,2],
 				"array2":[0,1,2],
-				"test_node":[{"f":0.0,"i":1,"s":"abc","vecI":[2,3,4], {"f":5.0,"i":6,"s":"def","vecI":[7,8,9]}]
+				"test_node":[{"f":0.0,"i":1,"s":"abc","vecI":[2,3,4]}, {"f":5.0,"i":6,"s":"def","vecI":[7,8,9]}]
 			}
 			*/
 			std::vector<TestNode> nodes2;
