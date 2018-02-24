@@ -1,3 +1,6 @@
+# outlines
+- [YXLJsonReader.h](#yxljsonreader-h)
+
 ## YXLJsonReader.h
 A C++ warpper of [rapidjson](https://github.com/Tencent/rapidjson) for easy json read/write and it is header only.
 
@@ -96,7 +99,8 @@ namespace YXL
 				value.AddMember(JsonParseCStr("f", doc), val.f, alloc);
 				value.AddMember(JsonParseCStr("i", doc), val.i, alloc);
 				value.AddMember(JsonParseCStr("s", doc), JsonParseStr(val.s, doc), alloc);
-				value.AddMember(JsonParseCStr("vecI", doc), ToJsonValueVec(int, val.vec, doc), alloc);
+				value.AddMember(JsonParseCStr("vecI", doc),
+					ToJsonValueVec(int, val.vec, doc), alloc);
 
 				return value;
 			}
@@ -116,8 +120,9 @@ namespace YXL
 			static bool IsType(const rapidjson::Value & val)
 			{
 				//check all members' type if necessary
-				return val.IsObject() && val.HasMember("f") && val.HasMember("i") && val.HasMember("s")
-					&& val.HasMember("vecI") && JsonValIsTypeVec(int, val["vecI"]);
+				return val.IsObject() && val.HasMember("f") && val.HasMember("i")
+					&& val.HasMember("s")	&& val.HasMember("vecI")
+					&& JsonValIsTypeVec(int, val["vecI"]);
 			}
 		};
 	}
