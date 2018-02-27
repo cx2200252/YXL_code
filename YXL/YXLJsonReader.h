@@ -124,6 +124,16 @@ namespace YXL
 			}
 		};
 
+		template<>
+		struct ValueParser<rapidjson::Value> {
+			static rapidjson::Value Parse(const rapidjson::Value& val, rapidjson::Document& doc)
+			{
+				rapidjson::Value ret;
+				ret.CopyFrom(val, doc.GetAllocator(), true);
+				return ret;
+			}
+		};
+
 #define ToJsonValue(type, val, doc) YXL::JSON::ValueParser<type>::Parse(val, doc)
 #define ToJsonValueVec(type, vals, doc) YXL::JSON::ValueParser<std::vector<type> >::Parse(vals, doc)
 
