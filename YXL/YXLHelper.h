@@ -10,13 +10,20 @@
 #include <opencv2/opencv.hpp>
 #endif
 
+//#define _NO_WINDOWS_
+
 #ifndef _NO_WINDOWS_
 #include <Windows.h>
+#else
+#include <qdatetime.h>
+#include <qmutex.h>
+#endif
 
 namespace YXL
 {
 	inline std::string GetCurTime()
 	{
+#ifndef _NO_WINDOWS_
 		SYSTEMTIME time;
 
 		GetLocalTime(&time);
@@ -32,18 +39,19 @@ namespace YXL
 			time.wSecond);
 
 		return std::string(tmp);
-	}
+#else
+		QDateTime time = QDateTime::currentDateTime();
+		QString str = time.toString("yyyyMMdd_hhmmss");
+		return str.toStdString();
+#endif
+}
 
 	inline std::string ToUnixPath(const std::string& str)
 	{
 		std::string path = str;
 		for (auto iter = path.begin(); iter != path.end(); ++iter)
-		{
 			if ('\\' == *iter)
-			{
 				*iter = '/';
-			}
-		}
 		return path;
 	}
 
@@ -51,16 +59,12 @@ namespace YXL
 	{
 		std::string path = str;
 		for (auto iter = path.begin(); iter != path.end(); ++iter)
-		{
 			if ('/' == *iter)
-			{
 				*iter = '\\';
-			}
-		}
 		return path;
 	}
 
-	inline std::string CheckPath(const std::string& str)
+	inline std::string CheckDirPath(const std::string& str)
 	{
 		if ('/' == *str.rbegin() || '\\' == *str.rbegin())
 			return str;
@@ -71,25 +75,21 @@ namespace YXL
 	inline std::string ReplaceStrings(const std::string& str, std::map<std::string, std::string>& replace_strs)
 	{
 		std::string res = str;
-		for (auto iter = replace_strs.begin(); iter != replace_strs.end(); ++iter)
-		{
-			size_t pos;
-			while (std::string::npos != (pos = res.find(iter->first)))
-			{
-				res.replace(pos, iter->first.length(), iter->second);
-			}
-		}
+		size_t pos;
+		for (auto& rep:replace_strs)
+			while (std::string::npos != (pos = res.find(rep.first)))
+				res.replace(pos, rep.first.length(), rep.second);
 		return res;
 	}
 
-	inline long long MakeLongLong(const int a, const int b)
+	inline long long MakeLongLong(const unsigned int a, const unsigned int b)
 	{
-		return ((long long)a) << 32 | (long long)b;
+		return ((unsigned long long)a) << 32 | (unsigned long long)b;
 	}
 
-	inline std::pair<int, int> SplitLongLong(const long long l)
+	inline std::pair<unsigned int, unsigned int> SplitLongLong(const unsigned long long l)
 	{
-		return std::make_pair((int)(l >> 32), (int)(l & 0xffffffff));
+		return std::make_pair((unsigned int)(l >> 32), (unsigned int)(l & 0xffffffff));
 	}
 
 	inline void LoadFileContent(const std::string& path, std::string& content) 
@@ -98,9 +98,7 @@ namespace YXL
 		std::ifstream fin(path);
 		std::string line;
 		while (getline(fin, line))
-		{
 			content += line + "\n";
-		}
 		fin.close();
 	}
 
@@ -129,9 +127,7 @@ namespace YXL
 				val = param.substr(pos + 1, param.length() - pos - 1);
 			}
 			else
-			{
 				name = param;
-			}
 			callback(name, val);
 		}
 	}
@@ -143,6 +139,7 @@ namespace YXL
 		FileInfo_FileSize
 	};
 	//return high-low
+#ifndef _NO_WINDOWS_
 	inline std::pair<DWORD, DWORD> GetFileInfo(const std::string& file_path, FileInfo fi)
 	{
 		WIN32_FIND_DATAA ffd;
@@ -168,6 +165,7 @@ namespace YXL
 		}
 		return ret;
 	}
+#endif
 
 	template<typename _Elem, typename _Traits>
 	class YXLOutStream
@@ -179,7 +177,7 @@ namespace YXL
 		typedef std::ostreambuf_iterator<_Elem, _Traits> _Iter;
 		typedef std::num_put<_Elem, _Iter> _Nput;
 
-
+#ifndef _NO_WINDOWS_
 		YXLOutStream()
 		{
 			InitializeCriticalSection(&cs);
@@ -197,6 +195,16 @@ namespace YXL
 		{
 			LeaveCriticalSection(&cs);
 		}
+#else
+		void Lock()
+		{
+			cs.lock();
+		}
+		void Unlock()
+		{
+			cs.unlock();
+		}
+#endif
 
 		template<typename type>
 		YXLOutStream& operator<<(type val)
@@ -233,13 +241,21 @@ namespace YXL
 		}
 
 	private:
+#ifndef _NO_WINDOWS_
 		CRITICAL_SECTION cs;
+#else
+		QMutex cs;
+#endif
 	};
 
 	extern YXLOutStream<char, std::char_traits<char> > yxlout;
 
-#define YXL_LOG_PREFIX GetCurrentThreadId()<<"["<<__FUNCTION__<<"] "
 
+#ifndef _NO_WINDOWS_
+#define YXL_LOG_PREFIX GetCurrentThreadId()<<"["<<__FUNCTION__<<"] "
+#else
+#define YXL_LOG_PREFIX "["<<__FUNCTION__<<"] "
+#endif
 
 
 	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m, const std::string& padding="")
@@ -328,43 +344,13 @@ namespace YXL
 	};
 }
 
-#else
 
-#endif
-
-#ifdef CV_VERSION
 namespace YXL
 {
-	inline cv::Mat ComputeMeshNormal(cv::Mat vertices, cv::Mat tris, bool is_reverse_normal)
-	{
-		using namespace std;
-		using namespace cv;
-		cv::Mat normals = Mat(vertices.size(), vertices.type(), cv::Scalar(0, 0, 0, 0));
-		for (int i(0); i != tris.rows; ++i)
-		{
-			Vec3i tri = tris.at<Vec3i>(i);
+	cv::Mat ComputeMeshNormal(cv::Mat vertices, cv::Mat tris, bool is_reverse_normal);
 
-			int idx[3] = { tri[is_reverse_normal ? 2 : 0], tri[1], tri[is_reverse_normal ? 0 : 2] };
-
-			Vec3f p0 = vertices.at<Vec3f>(idx[0]);
-			Vec3f p1 = vertices.at<Vec3f>(idx[1]);
-			Vec3f p2 = vertices.at<Vec3f>(idx[2]);
-
-			Vec3f a = p0 - p1, b = p1 - p2, c = p2 - p0;
-			float l2a = a.dot(a), l2b = b.dot(b), l2c = c.dot(c);
-			Vec3f facenormal = a.cross(b);
-			normals.at<Vec3f>(idx[0]) += facenormal*(1.0f / (l2a*l2c));
-			normals.at<Vec3f>(idx[1]) += facenormal*(1.0f / (l2b*l2a));
-			normals.at<Vec3f>(idx[2]) += facenormal*(1.0f / (l2c*l2b));
-		}
-		for (int i(0); i != normals.rows; ++i)
-		{
-			normals.at<Vec3f>(i) = cv::normalize(normals.at<Vec3f>(i));
-		}
-		return normals;
-	}
+	cv::Mat FilterImage(cv::Mat img, cv::Mat kernel, cv::Mat mask=cv::Mat());
 }
-#endif
 
 #ifdef HAS_CMFILE
 

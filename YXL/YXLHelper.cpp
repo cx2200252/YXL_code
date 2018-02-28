@@ -1,7 +1,6 @@
 #define POINTER_64 __ptr64
 #include "YXLHelper.h"
 #include <memory>
-#ifndef _NO_WINDOWS_
 
 namespace YXL
 {
@@ -374,5 +373,114 @@ namespace YXL
 
 
 }
+
+#ifdef CV_VERSION
+#undef min
+#undef max
+namespace YXL
+{
+	cv::Mat ComputeMeshNormal(cv::Mat vertices, cv::Mat tris, bool is_reverse_normal)
+	{
+		{
+			using namespace std;
+			using namespace cv;
+			cv::Mat normals = Mat(vertices.size(), vertices.type(), cv::Scalar(0, 0, 0, 0));
+			for (int i(0); i != tris.rows; ++i)
+			{
+				Vec3i tri = tris.at<Vec3i>(i);
+
+				int idx[3] = { tri[is_reverse_normal ? 2 : 0], tri[1], tri[is_reverse_normal ? 0 : 2] };
+
+				Vec3f p0 = vertices.at<Vec3f>(idx[0]);
+				Vec3f p1 = vertices.at<Vec3f>(idx[1]);
+				Vec3f p2 = vertices.at<Vec3f>(idx[2]);
+
+				Vec3f a = p0 - p1, b = p1 - p2, c = p2 - p0;
+				float l2a = a.dot(a), l2b = b.dot(b), l2c = c.dot(c);
+				Vec3f facenormal = a.cross(b);
+				normals.at<Vec3f>(idx[0]) += facenormal*(1.0f / (l2a*l2c));
+				normals.at<Vec3f>(idx[1]) += facenormal*(1.0f / (l2b*l2a));
+				normals.at<Vec3f>(idx[2]) += facenormal*(1.0f / (l2c*l2b));
+			}
+			for (int i(0); i != normals.rows; ++i)
+			{
+				normals.at<Vec3f>(i) = cv::normalize(normals.at<Vec3f>(i));
+			}
+			return normals;
+		}
+	}
+
+	template<typename basicType, int ch> cv::Mat _FilterImage(cv::Mat img, cv::Mat kernel, cv::Mat mask)
+	{
+		bool no_mask = mask.empty() != false;
+		if (kernel.type() != CV_32FC1 && kernel.rows != 1 && kernel.cols % 2 != 1 && (no_mask || mask.type() != CV_8UC1 || mask.size()!=img.size()))
+		{
+			yxlout << YXL_LOG_PREFIX << "params error..." << std::endl;
+			return cv::Mat();
+		}
+
+		const int half_ksize = kernel.cols / 2;
+
+		cv::Mat tmp(img.size(), img.type());
+		for (int i(0); i != img.rows; ++i)
+			for (int j(0); j != img.cols; ++j)
+			{
+				cv::Vec4d acc=cv::Vec4d::all(0);
+				double cnt = 0;
+				for (int k = std::max(0, j - half_ksize); k <= std::min(img.cols - 1, j + half_ksize); ++k)
+					if (no_mask || mask.at<uchar>(i, k) > 0)
+					{
+						int m = k - (j - half_ksize);
+						auto pix = img.at<cv::Vec<basicType, ch> >(i, k);
+						for (int n(0); n != ch; ++n)
+							acc[n] += kernel.at<float>(m)*pix[n];
+						cnt += kernel.at<float>(m);
+					}
+				cv::Vec<basicType, ch>  pix= cv::Vec<basicType, ch>::all(0);
+				if (no_mask || mask.at<uchar>(i, j) > 0)
+					for (int n(0); n != ch; ++n)
+						pix[n] = acc[n] / cnt;
+				tmp.at<cv::Vec<basicType, ch> >(i, j) = pix;
+			}
+		cv::Mat res(img.size(), img.type());
+		for (int i(0); i != img.rows; ++i)
+			for (int j(0); j != img.cols; ++j)
+			{
+				cv::Vec4d acc = cv::Vec4d::all(0);
+				double cnt = 0;
+				for (int k = std::max(0, i - half_ksize); k <= std::min(img.rows - 1, i + half_ksize); ++k)
+					if (no_mask || mask.at<uchar>(k, j) > 0)
+					{
+						int m = k - (i - half_ksize);
+						auto pix = tmp.at<cv::Vec<basicType, ch> >(k, j);
+						for (int n(0); n != ch; ++n)
+							acc[n] += kernel.at<float>(m)*pix[n];
+						cnt += kernel.at<float>(m);
+					}
+				cv::Vec<basicType, ch>  pix = cv::Vec<basicType, ch>::all(0);
+				if (no_mask || mask.at<uchar>(i, j) > 0)
+					for (int n(0); n != ch; ++n)
+						pix[n] = acc[n] / cnt;
+				res.at<cv::Vec<basicType, ch> >(i, j) = pix;
+			}
+
+		return res;
+	}
+
+	cv::Mat FilterImage(cv::Mat img, cv::Mat kernel, cv::Mat mask)
+	{
+		if (img.type() == CV_8UC1)
+			return _FilterImage<uchar, 1>(img, kernel, mask);
+		else if (img.type() == CV_8UC3)
+			return _FilterImage<uchar, 3>(img, kernel, mask);
+		else if (img.type() == CV_32FC1)
+			return _FilterImage<float, 1>(img, kernel, mask);
+		else if (img.type() == CV_32FC3)
+			return _FilterImage<float, 3>(img, kernel, mask);
+		else
+			return cv::Mat();
+	}
+}
+
 
 #endif
