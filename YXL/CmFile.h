@@ -49,6 +49,15 @@
 #include <QtWidgets/qfiledialog.h>
 #include <QtWidgets/QApplication.h>
 #endif
+#ifdef _DEBUG
+#pragma comment(lib, "Qt5Cored.lib")
+#pragma comment(lib, "Qt5Guid.lib")
+#pragma comment(lib, "Qt5Widgetsd.lib")
+#else
+#pragma comment(lib, "Qt5Core.lib")
+#pragma comment(lib, "Qt5Gui.lib")
+#pragma comment(lib, "Qt5Widgets.lib")
+#endif
 #endif
 
 //this file is adopted from the source code provided by the author of paper "BING: Binarized Normed Gradients for Objectness Estimation at 300fps"

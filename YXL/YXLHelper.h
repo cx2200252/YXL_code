@@ -6,9 +6,7 @@
 #include <vector>
 #include <map>
 
-#ifdef CV_VERSION
 #include <opencv2/opencv.hpp>
-#endif
 
 //#define _NO_WINDOWS_
 
