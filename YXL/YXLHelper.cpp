@@ -439,7 +439,7 @@ namespace YXL
 				cv::Vec<basicType, ch>  pix= cv::Vec<basicType, ch>::all(0);
 				if (no_mask || mask.at<uchar>(i, j) > 0)
 					for (int n(0); n != ch; ++n)
-						pix[n] = acc[n] / cnt;
+						pix[n] = static_cast<basicType>(acc[n] / cnt);
 				tmp.at<cv::Vec<basicType, ch> >(i, j) = pix;
 			}
 		cv::Mat res(img.size(), img.type());
@@ -460,7 +460,7 @@ namespace YXL
 				cv::Vec<basicType, ch>  pix = cv::Vec<basicType, ch>::all(0);
 				if (no_mask || mask.at<uchar>(i, j) > 0)
 					for (int n(0); n != ch; ++n)
-						pix[n] = acc[n] / cnt;
+						pix[n] = static_cast<basicType>(acc[n] / cnt);
 				res.at<cv::Vec<basicType, ch> >(i, j) = pix;
 			}
 

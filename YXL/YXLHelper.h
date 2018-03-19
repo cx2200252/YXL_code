@@ -73,7 +73,7 @@ namespace YXL
 	inline std::string ReplaceStrings(const std::string& str, std::map<std::string, std::string>& replace_strs)
 	{
 		std::string res = str;
-		size_t pos;
+		size_t pos=0;
 		for (auto& rep:replace_strs)
 			while (std::string::npos != (pos = res.find(rep.first)))
 				res.replace(pos, rep.first.length(), rep.second);
@@ -88,6 +88,48 @@ namespace YXL
 	inline std::pair<unsigned int, unsigned int> SplitLongLong(const unsigned long long l)
 	{
 		return std::make_pair((unsigned int)(l >> 32), (unsigned int)(l & 0xffffffff));
+	}
+
+	inline size_t FileSize(std::ifstream& file)
+	{
+		std::streampos oldPos = file.tellg();
+
+		file.seekg(0, std::ios::beg);
+		std::streampos beg = file.tellg();
+		file.seekg(0, std::ios::end);
+		std::streampos end = file.tellg();
+
+		file.seekg(oldPos, std::ios::beg);
+
+		return static_cast<size_t>(end - beg);
+	}
+	inline size_t FileSize(const std::string& filename)
+	{
+		std::ifstream fin(filename);
+		size_t ret = FileSize(fin);
+		fin.close();
+		return ret;
+	}
+
+	template<typename type> bool LoadFileContentBinary(const std::string& filepath, std::vector<type>& data)
+	{
+		std::ifstream fin(filepath, std::ios::binary);
+		if (false == fin.good())
+		{
+			fin.close();
+			return false;
+		}
+		size_t size = FileSize(fin);
+		if (0 == size)
+		{
+			fin.close();
+			return false;
+		}
+		data.resize(size / sizeof(type));
+		fin.read(reinterpret_cast<char*>(&data[0]), size);
+
+		fin.close();
+		return true;
 	}
 
 	inline void LoadFileContent(const std::string& path, std::string& content) 
@@ -208,34 +250,51 @@ namespace YXL
 		YXLOutStream& operator<<(type val)
 		{
 			std::cout << val;
-			std::ofstream fout("YXLOut.txt", std::ios::app);
-			fout << val;
-			fout.close();
+			if ("" != _log_file)
+			{
+				std::ofstream fout(_log_file, std::ios::app);
+				fout << val;
+				fout.close();
+			}
 			return *this;
 		}
 		YXLOutStream& operator<<(_Myt& (__cdecl *_Pfn)(_Myt&))
 		{
 			std::cout << _Pfn;
-			std::ofstream fout("YXLOut.txt", std::ios::app);
-			fout << _Pfn;
-			fout.close();
+			if ("" != _log_file)
+			{
+				std::ofstream fout(_log_file, std::ios::app);
+				fout << _Pfn;
+				fout.close();
+			}
 			return *this;
 		}
 		YXLOutStream& operator<<(_Myios& (__cdecl *_Pfn)(_Myios&))
 		{
 			std::cout << _Pfn;
-			std::ofstream fout("YXLOut.txt", std::ios::app);
-			fout << _Pfn;
-			fout.close();
+			if ("" != _log_file)
+			{
+				std::ofstream fout(_log_file, std::ios::app);
+				fout << _Pfn;
+				fout.close();
+			}
 			return *this;
 		}
 		YXLOutStream& operator<<(std::ios_base& (__cdecl *_Pfn)(std::ios_base&))
 		{
 			std::cout << _Pfn;
-			std::ofstream fout("YXLOut.txt", std::ios::app);
-			fout << _Pfn;
-			fout.close();
+			if ("" != _log_file)
+			{
+				std::ofstream fout(_log_file, std::ios::app);
+				fout << _Pfn;
+				fout.close();
+			}
 			return *this;
+		}
+
+		void SetLogFile(const std::string& log_file)
+		{
+			_log_file = log_file;
 		}
 
 	private:
@@ -244,6 +303,7 @@ namespace YXL
 #else
 		QMutex cs;
 #endif
+		std::string _log_file = "YXLOut.txt";
 	};
 
 	extern YXLOutStream<char, std::char_traits<char> > yxlout;
