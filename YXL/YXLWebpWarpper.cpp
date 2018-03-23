@@ -30,19 +30,24 @@ namespace YXL
 
 bool YXL::WebP::Convert2Webp(const std::string & src_path, const std::string & dest_path)
 {
-	std::cout << src_path <<"\t"<<CmFile::FileExist(src_path)<< std::endl;
-	std::cout << dest_path << std::endl;
 	cv::Mat img = cv::imread(src_path, -1);
+	return Convert2Webp(img, dest_path);
+}
+
+bool YXL::WebP::Convert2Webp(cv::Mat img, const std::string & dest_path)
+{
+	if (img.empty())
+		return false;
 	if (img.channels() == 3)
 		cv::cvtColor(img, img, CV_BGR2BGRA);
 
 	WebPConfig config;
 	WebPPicture pic;
-	if (!WebPPictureInit(&pic) ||!WebPConfigInit(&config))
+	if (!WebPPictureInit(&pic) || !WebPConfigInit(&config))
 		return false;
 	//check within WebPEncode
 	/*if (!WebPValidateConfig(&config))
-		return false;*/
+	return false;*/
 
 	pic.use_argb = 1;
 	pic.argb = reinterpret_cast<uint32_t*>(img.data);
@@ -59,7 +64,7 @@ bool YXL::WebP::Convert2Webp(const std::string & src_path, const std::string & d
 	if (!WebPEncode(&config, &pic))
 	{
 		std::cout << "Error! Cannot encode picture as WebP" << std::endl;
-		std::cout << "Error code: " << pic.error_code << " (" << kErrorMessages[pic.error_code]  << ")" << std::endl;
+		std::cout << "Error code: " << pic.error_code << " (" << kErrorMessages[pic.error_code] << ")" << std::endl;
 		return false;
 	}
 
