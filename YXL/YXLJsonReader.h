@@ -142,6 +142,11 @@ namespace YXL
 #define JsonParseVecStr(vals, doc) ToJsonValueVec(std::string, vals, doc)
 #define JsonParseVecCStr(vals, doc) ToJsonValueVec(const char*, vals, doc)
 
+#define JsonParseBoolVec(vals, doc) ToJsonValueVec(bool, vals, doc)
+#define JsonParseIntVec(vals, doc) ToJsonValueVec(int, vals, doc)
+#define JsonParseFloatVec(vals, doc) ToJsonValueVec(float, vals, doc)
+
+
 		//read
 
 		template<typename type>
@@ -243,18 +248,35 @@ namespace YXL
 #define FromJsonValueVec(type, json_val) YXL::JSON::ValueGetter<std::vector<type> >::Get(json_val)
 
 #define JsonValIsBool(json_val) JsonValIsType(bool, json_val)
+#define JsonValIsInt(json_val) JsonValIsType(int, json_val)
 #define JsonValIsFloat(json_val) JsonValIsType(float, json_val)
 #define JsonValIsStr(json_val) JsonValIsType(std::string, json_val)
 
 #define JsonValIsBoolVec(json_val) JsonValIsTypeVec(bool, json_val)
+#define JsonValIsIntVec(json_val) JsonValIsTypeVec(int, json_val)
 #define JsonValIsFloatVec(json_val) JsonValIsTypeVec(float, json_val)
 #define JsonValIsStrVec(json_val) JsonValIsTypeVec(std::string, json_val)
 
+#define JsonValHasMemberAndIsType(json_val, member, type) (json_val.HasMember(member)&&JsonValIsType(type, json_val[member]))
+#define JsonValHasMemberAndIsTypeVec(json_val, member, type) (json_val.HasMember(member)&&JsonValIsTypeVec(type, json_val[member]))
+
+#define JsonValHasMemberAndIsBool(json_val, member) JsonValHasMemberAndIsType(json_val, member, bool)
+#define JsonValHasMemberAndIsInt(json_val, member) JsonValHasMemberAndIsType(json_val, member, int)
+#define JsonValHasMemberAndIsFloat(json_val, member) JsonValHasMemberAndIsType(json_val, member, float)
+#define JsonValHasMemberAndIsStr(json_val, member) JsonValHasMemberAndIsType(json_val, member, std::string)
+
+#define JsonValHasMemberAndIsBoolVec(json_val, member) JsonValHasMemberAndIsTypeVec(json_val, member, bool)
+#define JsonValHasMemberAndIsIntVec(json_val, member) JsonValHasMemberAndIsTypeVec(json_val, member, int)
+#define JsonValHasMemberAndIsFloatVec(json_val, member) JsonValHasMemberAndIsTypeVec(json_val, member, float)
+#define JsonValHasMemberAndIsStrVec(json_val, member) JsonValHasMemberAndIsTypeVec(json_val, member, std::string)
+
 #define JsonGetBool(json_val) FromJsonValue(bool, json_val)
+#define JsonGetInt(json_val) FromJsonValue(int, json_val)
 #define JsonGetFloat(json_val) FromJsonValue(float, json_val)
 #define JsonGetStr(json_val) FromJsonValue(std::string, json_val)
 
 #define JsonGetBoolVec(json_val) FromJsonValueVec(bool, json_val)
+#define JsonGetIntVec(json_val) FromJsonValueVec(int, json_val)
 #define JsonGetFloatVec(json_val) FromJsonValueVec(float, json_val)
 #define JsonGetStrVec(json_val) FromJsonValueVec(std::string, json_val)
 
