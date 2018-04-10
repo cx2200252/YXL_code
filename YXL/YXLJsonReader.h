@@ -1,20 +1,25 @@
-#pragma once
+#ifndef _YXL_JSON_READER_H_
+#define _YXL_JSON_READER_H_
+
 #undef min
 #undef max
-#include "rapidjson/document.h"
-#include "rapidjson/prettywriter.h"
+#include <rapidjson/document.h>
+#include <rapidjson/prettywriter.h>
 #include <fstream>
 #include <string>
 #include <vector>
 #include <iostream>
 #include <memory>
+#include <sstream>
 //#include "YXLHelper.h"
 
-#ifndef _NO_WINDOWS_
+#ifdef _WITH_WINDOWS_
 #include <Windows.h>
 #else
+#ifdef _WITH_QT_
 #include <QString>
 #include <QTextCodec>
+#endif
 #endif
 
 namespace YXL
@@ -22,22 +27,22 @@ namespace YXL
 	namespace JSON
 	{
 
-#ifndef _NO_WINDOWS_
+#ifdef _WITH_WINDOWS_
 		inline std::string UTF8ToGBK(std::string utf8)
 		{
 			wchar_t * lpUnicodeStr = NULL;
 			int nRetLen = 0;
-			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, NULL, NULL);  //»ñÈ¡×ª»»µ½Unicode±àÂëºóËùÐèÒªµÄ×Ö·û¿Õ¼ä³¤¶È
-			lpUnicodeStr = new WCHAR[nRetLen + 1];  //ÎªUnicode×Ö·û´®¿Õ¼ä
-			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, lpUnicodeStr, nRetLen);  //×ª»»µ½Unicode±àÂë
-			if (!nRetLen)  //×ª»»Ê§°ÜÔò³ö´íÍË³ö
+			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, NULL, NULL);  //èŽ·å–è½?æ¢åˆ°Unicodeç¼–ç åŽæ‰€éœ€è¦çš„å­—ç?¦ç©ºé—´é•¿åº?
+			lpUnicodeStr = new WCHAR[nRetLen + 1];  //ä¸ºUnicodeå­—ç?¦ä¸²ç©ºé—´
+			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, lpUnicodeStr, nRetLen);  //è½?æ¢åˆ°Unicodeç¼–ç 
+			if (!nRetLen)  //è½?æ¢å¤±è´¥åˆ™å‡ºé”™é€€å‡?
 			{
 				delete[] lpUnicodeStr;
 				return 0;
 			}
-			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, NULL, NULL, NULL, NULL);  //»ñÈ¡×ª»»µ½GBK±àÂëºóËùÐèÒªµÄ×Ö·û¿Õ¼ä³¤¶È
+			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, NULL, NULL, NULL, NULL);  //èŽ·å–è½?æ¢åˆ°GBKç¼–ç åŽæ‰€éœ€è¦çš„å­—ç?¦ç©ºé—´é•¿åº?
 			char* tmp = new char[nRetLen];
-			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, tmp, nRetLen, NULL, NULL);  //×ª»»µ½GBK±àÂë
+			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, tmp, nRetLen, NULL, NULL);  //è½?æ¢åˆ°GBKç¼–ç 
 			delete[] lpUnicodeStr;
 			std::string ret = tmp;
 			delete[] tmp;
@@ -48,22 +53,23 @@ namespace YXL
 		{
 			wchar_t * lpUnicodeStr = NULL;
 			int nRetLen = 0;
-			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, NULL, NULL);  //»ñÈ¡×ª»»µ½Unicode±àÂëºóËùÐèÒªµÄ×Ö·û¿Õ¼ä³¤¶È
-			lpUnicodeStr = new WCHAR[nRetLen + 1];  //ÎªUnicode×Ö·û´®¿Õ¼ä
-			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, lpUnicodeStr, nRetLen);  //×ª»»µ½Unicode±àÂë
-			if (!nRetLen)  //×ª»»Ê§°ÜÔò³ö´íÍË³ö
+			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, NULL, NULL);  //èŽ·å–è½?æ¢åˆ°Unicodeç¼–ç åŽæ‰€éœ€è¦çš„å­—ç?¦ç©ºé—´é•¿åº?
+			lpUnicodeStr = new WCHAR[nRetLen + 1];  //ä¸ºUnicodeå­—ç?¦ä¸²ç©ºé—´
+			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, lpUnicodeStr, nRetLen);  //è½?æ¢åˆ°Unicodeç¼–ç 
+			if (!nRetLen)  //è½?æ¢å¤±è´¥åˆ™å‡ºé”™é€€å‡?
 			{
 				delete[] lpUnicodeStr;
 				return 0;
 			}
-			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, NULL, 0, NULL, NULL);  //»ñÈ¡×ª»»µ½UTF8±àÂëºóËùÐèÒªµÄ×Ö·û¿Õ¼ä³¤¶È
+			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, NULL, 0, NULL, NULL);  //èŽ·å–è½?æ¢åˆ°UTF8ç¼–ç åŽæ‰€éœ€è¦çš„å­—ç?¦ç©ºé—´é•¿åº?
 			char* tmp = new char[nRetLen];
-			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, (char *)tmp, nRetLen, NULL, NULL);  //×ª»»µ½UTF8±àÂë
+			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, (char *)tmp, nRetLen, NULL, NULL);  //è½?æ¢åˆ°UTF8ç¼–ç 
 			std::string ret = tmp;
 			delete[] tmp;
 			return ret;
 		}
 #else
+#ifdef _WITH_QT_
 		inline std::string UTF8ToGBK(std::string utf8)
 		{
 			QTextCodec *gbk_codec = QTextCodec::codecForName("gbk");
@@ -81,6 +87,17 @@ namespace YXL
 			auto ret = utf8_codec->fromUnicode(tmp);
 			return ret.data();
 		}
+#else
+		inline std::string UTF8ToGBK(std::string utf8)
+		{
+			return utf8;
+		}
+
+		inline std::string GBKToUTF8(std::string gbk)
+		{
+			return gbk;
+		}
+#endif
 #endif
 
 		template<typename type>
@@ -343,6 +360,18 @@ namespace YXL
 				fout << sb.GetString() << std::endl;
 				fout.close();
 			}
+			void SaveBinary(std::ostream& out)
+			{
+				using namespace rapidjson;
+				StringBuffer sb;
+				PrettyWriter<StringBuffer> writer(sb);
+				_doc.Accept(writer);    // Accept() traverses the DOM and generates Handler events.
+
+				std::string content = sb.GetString();
+				int len = content.length();
+				out.write((char*)&len, sizeof(len));
+				out.write(content.c_str(), content.length());
+			}
 
 		public:
 			rapidjson::Value& GetJSONValue(const std::string& name, rapidjson::Value& parent)
@@ -492,3 +521,4 @@ namespace YXL
 		};
 	}
 }
+#endif // !_YXL_JSON_READER_H_

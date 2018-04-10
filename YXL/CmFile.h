@@ -1,6 +1,7 @@
 /******************************************************
-									CmFile.h
+CmFile.h
 
+this file is adopted from the source code provided by the author of paper "BING: Binarized Normed Gradients for Objectness Estimation at 300fps"
 
 ******************************************************/
 #ifndef _CM_FILE_H_2014_4_19_
@@ -8,16 +9,14 @@
 
 #define HAS_CMFILE
 
-#define POINTER_64 __ptr64
+#include <string>
+#include <vector>
+#include <fstream>
+#include <memory>
 
 #pragma warning(disable:4819)
 
-#ifdef _WIN32
-#define _CRT_SECURE_NO_DEPRECATE
-//#define _CRT_SECURE_NO_WARNINGS
-#endif
-
-#ifndef CMFILE_STATIC
+#ifdef CMFILE_DYNAMIC
 #ifndef LIB_CMFILE
 #ifdef _LIB_CMFILE_IMPL
 #define LIB_CMFILE __declspec(dllexport)
@@ -29,38 +28,18 @@
 #define LIB_CMFILE
 #endif
 
-#include <string>
-#include <vector>
-#include <omp.h>
-#include <fstream>
+typedef const std::string CStr;
+typedef std::vector<std::string> vecS;
+typedef std::vector<int> vecI;
+typedef std::vector<std::string> vecS;
+typedef std::vector<float> vecF;
+typedef std::vector<double> vecD;
+#define _S(str) ((str).c_str())
+
+#ifdef _WITH_OPENCV_
+
+#define POINTER_64 __ptr64
 #include <opencv2/opencv.hpp>
-#include <memory>
-
-#ifndef _NO_WINDOWS_
-#include <Windows.h>
-#else
-#include <qdir.h>
-#include <qprocess.h>
-
-#ifdef _CLOUD_VER_
-#include <QFileDialog>
-#include <QApplication>
-#else
-#include <QtWidgets/qfiledialog.h>
-#include <QtWidgets/QApplication.h>
-#endif
-#ifdef _DEBUG
-#pragma comment(lib, "Qt5Cored.lib")
-#pragma comment(lib, "Qt5Guid.lib")
-#pragma comment(lib, "Qt5Widgetsd.lib")
-#else
-#pragma comment(lib, "Qt5Core.lib")
-#pragma comment(lib, "Qt5Gui.lib")
-#pragma comment(lib, "Qt5Widgets.lib")
-#endif
-#endif
-
-//this file is adopted from the source code provided by the author of paper "BING: Binarized Normed Gradients for Objectness Estimation at 300fps"
 
 #ifndef CV_LIB
 #define CV_VERSION_ID CVAUX_STR(CV_MAJOR_VERSION) CVAUX_STR(CV_MINOR_VERSION) CVAUX_STR(CV_SUBMINOR_VERSION)
@@ -83,38 +62,65 @@
 #pragma comment( lib, CV_LIB("imgproc"))
 #pragma comment( lib, CV_LIB("highgui"))
 
+
 #if (2 < CV_MAJOR_VERSION)
 #pragma comment( lib, CV_LIB("imgcodecs"))
 #endif
 
-typedef const std::string CStr;
-typedef std::vector<std::string> vecS;
-typedef std::vector<int> vecI;
 typedef const cv::Mat CMat;
-typedef std::vector<std::string> vecS;
 typedef std::vector<cv::Mat> vecM;
-typedef std::vector<float> vecF;
-typedef std::vector<double> vecD;
-#define _S(str) ((str).c_str())
 
-#ifndef _NO_WINDOWS_
+#endif
+
+#ifdef _WITH_WINDOWS_
+#include <Windows.h>
+#else
+#ifdef _WITH_QT_
+#include <qdir.h>
+#include <qprocess.h>
+#include <QtWidgets/qfiledialog.h>
+#include <QtWidgets/QApplication.h>
+
+#ifdef _DEBUG
+#pragma comment(lib, "Qt5Cored.lib")
+#pragma comment(lib, "Qt5Guid.lib")
+#pragma comment(lib, "Qt5Widgetsd.lib")
+#else
+#pragma comment(lib, "Qt5Core.lib")
+#pragma comment(lib, "Qt5Gui.lib")
+#pragma comment(lib, "Qt5Widgets.lib")
+#endif
+#endif
+#endif
+
+#ifdef _WIN32
+#define _CRT_SECURE_NO_DEPRECATE
+#endif
+
+
 class LIB_CMFILE CmFile
 {
 public:
-	static std::string BrowseFile(const char* strFilter = "Images (*.jpg;*.png)\0*.jpg;*.png\0All (*.*)\0*.*\0\0", bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
-	static std::string BrowseFolder(CStr& title="BrowseFolder");
-
 	static inline std::string GetFolder(CStr& path);
 	static inline std::string GetName(CStr& path);
 	static inline std::string GetNameNE(CStr& path);
 	static inline std::string GetPathNE(CStr& path);
+	static inline std::string GetExtention(CStr name);
+
+	static void WriteNullFile(CStr& fileName) { FILE *f=fopen(_S(fileName), "w"); fclose(f); }
+
+	static vecS loadStrList(CStr &fName);
+	static bool writeStrList(CStr &fName, const vecS &strs);
+
+#ifdef _WITH_WINDOWS_
+	static std::string BrowseFile(const char* strFilter = "Images (*.jpg;*.png)\0*.jpg;*.png\0All (*.*)\0*.*\0\0", bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
+	static std::string BrowseFolder(CStr& title = "BrowseFolder");
 
 	// Get file names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
 	static int GetNames(CStr &nameW, vecS &names, std::string &dir = std::string());
 	static int GetNames(CStr& rootFolder, CStr &fileW, vecS &names);
 	static int GetNamesNE(CStr& nameWC, vecS &names, std::string &dir = std::string(), std::string &ext = std::string());
 	static int GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names);
-	static inline std::string GetExtention(CStr name);
 
 	static inline bool FileExist(CStr& filePath);
 	static inline bool FilesExist(CStr& fileW);
@@ -139,29 +145,56 @@ public:
 	static BOOL Move2Dir(CStr &srcW, CStr dstDir);
 	static BOOL Copy2Dir(CStr &srcW, CStr dstDir);
 
-	//Load mask image and threshold thus noisy by compression can be removed
-	static cv::Mat LoadMask(CStr& fileName);
+	static void RunProgram(CStr &fileName, CStr &parameters = "", bool waiteF = false, bool showW = true);
+#else
+#ifdef _WITH_QT_
+	static void InitQApplication(int argc, char** argv)
+	{
+		if (nullptr == _app)
+			_app = std::shared_ptr<QApplication>(new QApplication(argc, argv));
+	}
+	//may need call CmFile::InitQApplication first
+	static std::string BrowseFile(const char* strFilter = "Images (*.jpg *.png);;All (*.*)", bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
+	//may need call CmFile::InitQApplication first
+	static std::string BrowseFolder(CStr& title = "BrowseFolder");
 
-	static void WriteNullFile(CStr& fileName) { FILE *f; fopen_s(&f, _S(fileName), "w"); fclose(f); }
+	// Get file names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
+	static int GetNames(CStr &nameW, vecS &names, std::string &dir);
+	static int GetNames(CStr& rootFolder, CStr &fileW, vecS &names);
+	static int GetNamesNE(CStr& nameWC, vecS &names, std::string &dir, std::string &ext);
+	static int GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names);
 
-	static void ChkImgs(CStr &imgW);
+	static inline bool FileExist(CStr& filePath);
+	static inline bool FilesExist(CStr& fileW);
+	static inline bool FolderExist(CStr& strPath);
+
+	static inline std::string GetWkDir();
+	static inline void SetWkDir(CStr& dir);
+
+	static bool MkDir(CStr&  path);
+
+	// Eg: RenameImages("D:/DogImages/*.jpg", "F:/Images", "dog", ".jpg");
+	static int Rename(CStr& srcNames, CStr& dstDir, const char* nameCommon, const char* nameExt);
+
+	static inline void RmFile(CStr& fileW);
+	static void RmFolder(CStr& dir);
+	static void CleanFolder(CStr& dir, bool subFolder = false);
+
+	static int GetSubFolders(CStr& folder, vecS& subFolders);
+
+	inline static bool Copy(CStr &src, CStr &dst);
+	inline static bool Move(CStr &src, CStr &dst);
+	static bool Move2Dir(CStr &srcW, CStr dstDir);
+	static bool Copy2Dir(CStr &srcW, CStr dstDir);
 
 	static void RunProgram(CStr &fileName, CStr &parameters = "", bool waiteF = false, bool showW = true);
+private:
+	static std::shared_ptr<QApplication> _app;
+#endif
+#endif
 
-	static void SegOmpThrdNum(double ratio = 0.8);
-
-	// Copy files and add suffix. e.g. copyAddSuffix("./*.jpg", "./Imgs/", "_Img.jpg")
-	static void copyAddSuffix(CStr &srcW, CStr &dstDir, CStr &dstSuffix);
-
-	static vecS loadStrList(CStr &fName);
-	static bool writeStrList(CStr &fName, const vecS &strs);
 };
 
-
-
-/************************************************************************/
-/* Implementation of inline functions                                   */
-/************************************************************************/
 std::string CmFile::GetFolder(CStr& path)
 {
 	return path.substr(0, path.find_last_of("\\/") + 1);
@@ -198,6 +231,8 @@ std::string CmFile::GetExtention(CStr name)
 	return name.substr(name.find_last_of('.'));
 }
 
+
+#ifdef _WITH_WINDOWS_
 BOOL CmFile::Copy(CStr &src, CStr &dst, BOOL failIfExist)
 {
 	return ::CopyFileA(src.c_str(), dst.c_str(), failIfExist);
@@ -260,85 +295,8 @@ bool CmFile::FolderExist(CStr& strPath)
 	FindClose(hFind);
 	return rValue;
 }
-
-/************************************************************************/
-/*                   Implementations                                    */
-/************************************************************************/
 #else
-class LIB_CMFILE CmFile
-{
-public:
-	static void InitQApplication(int argc, char** argv)
-	{
-		if (nullptr == _app)
-			_app = std::shared_ptr<QApplication>(new QApplication(argc, argv));
-	}
-
-	//may need call CmFile::InitQApplication first
-	static std::string BrowseFile(const char* strFilter = "Images (*.jpg *.png);;All (*.*)", bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
-	//may need call CmFile::InitQApplication first
-	static std::string BrowseFolder(CStr& title = "BrowseFolder");
-
-	static inline std::string GetFolder(CStr& path);
-	static inline std::string GetName(CStr& path);
-	static inline std::string GetNameNE(CStr& path);
-	static inline std::string GetPathNE(CStr& path);
-
-	// Get file names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
-	static int GetNames(CStr &nameW, vecS &names, std::string &dir);
-	static int GetNames(CStr& rootFolder, CStr &fileW, vecS &names);
-	static int GetNamesNE(CStr& nameWC, vecS &names, std::string &dir, std::string &ext);
-	static int GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names);
-	static inline std::string GetExtention(CStr name);
-
-	static inline bool FileExist(CStr& filePath);
-	static inline bool FilesExist(CStr& fileW);
-	static inline bool FolderExist(CStr& strPath);
-
-	static inline std::string GetWkDir();
-	static inline void SetWkDir(CStr& dir);
-
-	static bool MkDir(CStr&  path);
-
-	// Eg: RenameImages("D:/DogImages/*.jpg", "F:/Images", "dog", ".jpg");
-	static int Rename(CStr& srcNames, CStr& dstDir, const char* nameCommon, const char* nameExt);
-
-	static inline void RmFile(CStr& fileW);
-	static void RmFolder(CStr& dir);
-	static void CleanFolder(CStr& dir, bool subFolder = false);
-
-	static int GetSubFolders(CStr& folder, vecS& subFolders);
-
-	inline static bool Copy(CStr &src, CStr &dst);
-	inline static bool Move(CStr &src, CStr &dst);
-	static bool Move2Dir(CStr &srcW, CStr dstDir);
-	static bool Copy2Dir(CStr &srcW, CStr dstDir);
-
-	//Load mask image and threshold thus noisy by compression can be removed
-	static cv::Mat LoadMask(CStr& fileName);
-
-	static void WriteNullFile(CStr& fileName) { FILE *f = fopen(_S(fileName), "w"); fclose(f); }
-
-	static void ChkImgs(CStr &imgW);
-
-	static void RunProgram(CStr &fileName, CStr &parameters = "", bool waiteF = false, bool showW = true);
-
-	static void SegOmpThrdNum(double ratio = 0.8);
-
-	// Copy files and add suffix. e.g. copyAddSuffix("./*.jpg", "./Imgs/", "_Img.jpg")
-	static void copyAddSuffix(CStr &srcW, CStr &dstDir, CStr &dstSuffix);
-
-	static vecS loadStrList(CStr &fName);
-	static bool writeStrList(CStr &fName, const vecS &strs);
-
-private:
-	static std::shared_ptr<QApplication> _app;
-};
-
-
-/************************************************************************/
-/* Implementation of inline functions                                   */
-/************************************************************************/
+#ifdef _WITH_QT_
 std::string CmFile::GetFolder(CStr& path)
 {
 	return path.substr(0, path.find_last_of("\\/") + 1);
@@ -439,9 +397,17 @@ bool CmFile::FolderExist(CStr& strPath)
 	QDir dir(QString::fromStdString(str));;
 	return dir.exists();
 }
+#endif
+#endif
+
+
+
+/************************************************************************/
+/* Implementation of inline functions                                   */
+/************************************************************************/
+
 
 /************************************************************************/
 /*                   Implementations                                    */
 /************************************************************************/
-#endif
 #endif

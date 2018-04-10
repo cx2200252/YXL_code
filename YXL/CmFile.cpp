@@ -5,8 +5,10 @@
 ******************************************************/
 #define _LIB_CMFILE_IMPL
 #pragma warning(disable:4819)
+
+#include <algorithm>
 #include "CmFile.h"
-#ifndef _NO_WINDOWS_
+#ifdef _WITH_WINDOWS_
 #include <shlobj.h>
 #include <Commdlg.h>
 #include <ShellAPI.h>
@@ -14,8 +16,30 @@
 
 //this file is adopted from the source code provided by the author of paper "BING: Binarized Normed Gradients for Objectness Estimation at 300fps"
 
-#ifndef _NO_WINDOWS_
+vecS CmFile::loadStrList(CStr &fName)
+{
+	std::ifstream fIn(fName);
+	std::string line;
+	vecS strs;
+	while (getline(fIn, line) && line.size())
+		strs.push_back(line);
+	return strs;
+}
 
+bool CmFile::writeStrList(CStr &fName, const vecS &strs)
+{
+	FILE *f=fopen(_S(fName), "w");
+	if (f == NULL)
+		return false;
+	for (size_t i = 0; i < strs.size(); i++)
+		fprintf(f, "%s\n", _S(strs[i]));
+	fclose(f);
+	return true;
+}
+
+
+
+#ifdef _WITH_WINDOWS_
 BOOL CmFile::MkDir(CStr&  _path)
 {
 	if (_path.size() == 0)
@@ -96,7 +120,7 @@ std::string CmFile::BrowseFile(const char* strFilter, bool isOpen, const std::st
 	ofn.lpstrFilter = strFilter;
 	ofn.nFilterIndex = 1;
 	ofn.Flags = OFN_PATHMUSTEXIST;
-	
+
 	ofn.lpstrInitialDir = &opened_dir[0];
 	ofn.lpstrTitle = title.c_str();
 
@@ -222,15 +246,6 @@ int CmFile::GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names)
 	return fNum;
 }
 
-// Load mask image and threshold thus noisy by compression can be removed
-cv::Mat CmFile::LoadMask(CStr& fileName)
-{
-	cv::Mat mask = cv::imread(fileName, CV_LOAD_IMAGE_GRAYSCALE);
-	CV_Assert_(mask.data != NULL, ("Can't find mask image: %s", _S(fileName)));
-	compare(mask, 128, mask, CV_CMP_GT);
-	return mask;
-}
-
 BOOL CmFile::Move2Dir(CStr &srcW, CStr dstDir)
 {
 	vecS names;
@@ -253,22 +268,6 @@ BOOL CmFile::Copy2Dir(CStr &srcW, CStr dstDir)
 		if (Copy(inDir + names[i], dstDir + names[i]) == FALSE)
 			r = FALSE;
 	return r;
-}
-
-void CmFile::ChkImgs(CStr &imgW)
-{
-	vecS names;
-	std::string inDir;
-	int imgNum = GetNames(imgW, names, inDir);
-	printf("Checking %d images: %s\n", imgNum, _S(imgW));
-	for (int i = 0; i < imgNum; i++) {
-		cv::Mat img = cv::imread(inDir + names[i]);
-		if (img.data == NULL)
-			printf("Loading file %s failed\t\t\n", _S(names[i]));
-		if (i % 200 == 0)
-			printf("Processing %2.1f%%\r", (i*100.0) / imgNum);
-	}
-	printf("\t\t\t\t\r");
 }
 
 void CmFile::RunProgram(CStr &fileName, CStr &parameters, bool waiteF, bool showW)
@@ -301,56 +300,9 @@ void CmFile::RunProgram(CStr &fileName, CStr &parameters, bool waiteF, bool show
 	if (waiteF)
 		WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
 }
-
-void CmFile::SegOmpThrdNum(double ratio /* = 0.8 */)
-{
-	int thrNum = omp_get_max_threads();
-	int usedNum = cvRound(thrNum * ratio);
-	usedNum = (std::max)(usedNum, 1);
-	//CmLog::LogLine("Number of CPU cores used is %d/%d\n", usedNum, thrNum);
-	omp_set_num_threads(usedNum);
-}
-
-
-// Copy files and add suffix. e.g. copyAddSuffix("./*.jpg", "./Imgs/", "_Img.jpg")
-void CmFile::copyAddSuffix(CStr &srcW, CStr &dstDir, CStr &dstSuffix)
-{
-	vecS namesNE;
-	std::string srcDir, srcExt;
-	int imgN = CmFile::GetNamesNE(srcW, namesNE, srcDir, srcExt);
-	CmFile::MkDir(dstDir);
-	for (int i = 0; i < imgN; i++)
-		CmFile::Copy(srcDir + namesNE[i] + srcExt, dstDir + namesNE[i] + dstSuffix);
-}
-
-vecS CmFile::loadStrList(CStr &fName)
-{
-	std::ifstream fIn(fName);
-	std::string line;
-	vecS strs;
-	while (getline(fIn, line) && line.size())
-		strs.push_back(line);
-	return strs;
-}
-
-bool CmFile::writeStrList(CStr &fName, const vecS &strs)
-{
-	FILE *f;
-	fopen_s(&f, _S(fName), "w");
-	if (f == NULL)
-		return false;
-	for (size_t i = 0; i < strs.size(); i++)
-		fprintf(f, "%s\n", _S(strs[i]));
-	fclose(f);
-	return true;
-}
-
 #else
-
+#ifdef _WITH_QT_
 std::shared_ptr<QApplication> CmFile::_app = nullptr;
-
-//this file is adopted from the source code provided by the author of paper "BING: Binarized Normed Gradients for Objectness Estimation at 300fps"
-
 bool CmFile::MkDir(CStr&  _path)
 {
 	if (_path.size() == 0)
@@ -507,15 +459,6 @@ int CmFile::GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names)
 	return fNum;
 }
 
-// Load mask image and threshold thus noisy by compression can be removed
-cv::Mat CmFile::LoadMask(CStr& fileName)
-{
-	cv::Mat mask = cv::imread(fileName, CV_LOAD_IMAGE_GRAYSCALE);
-	CV_Assert_(mask.data != NULL, ("Can't find mask image: %s", _S(fileName)));
-	compare(mask, 128, mask, CV_CMP_GT);
-	return mask;
-}
-
 bool CmFile::Move2Dir(CStr &srcW, CStr dstDir)
 {
 	vecS names;
@@ -540,22 +483,6 @@ bool CmFile::Copy2Dir(CStr &srcW, CStr dstDir)
 	return r;
 }
 
-void CmFile::ChkImgs(CStr &imgW)
-{
-	vecS names;
-	std::string inDir;
-	int imgNum = GetNames(imgW, names, inDir);
-	printf("Checking %d images: %s\n", imgNum, _S(imgW));
-	for (int i = 0; i < imgNum; i++) {
-		cv::Mat img = cv::imread(inDir + names[i]);
-		if (img.data == NULL)
-			printf("Loading file %s failed\t\t\n", _S(names[i]));
-		if (i % 200 == 0)
-			printf("Processing %2.1f%%\r", (i*100.0) / imgNum);
-	}
-	printf("\t\t\t\t\r");
-}
-
 void CmFile::RunProgram(CStr &fileName, CStr &parameters, bool waiteF, bool showW)
 {
 	std::string runExeFile = fileName;
@@ -578,46 +505,5 @@ void CmFile::RunProgram(CStr &fileName, CStr &parameters, bool waiteF, bool show
 		proc.waitForFinished();
 }
 
-void CmFile::SegOmpThrdNum(double ratio /* = 0.8 */)
-{
-	int thrNum = omp_get_max_threads();
-	int usedNum = cvRound(thrNum * ratio);
-	usedNum = (std::max)(usedNum, 1);
-	//CmLog::LogLine("Number of CPU cores used is %d/%d\n", usedNum, thrNum);
-	omp_set_num_threads(usedNum);
-}
-
-
-// Copy files and add suffix. e.g. copyAddSuffix("./*.jpg", "./Imgs/", "_Img.jpg")
-void CmFile::copyAddSuffix(CStr &srcW, CStr &dstDir, CStr &dstSuffix)
-{
-	vecS namesNE;
-	std::string srcDir, srcExt;
-	int imgN = CmFile::GetNamesNE(srcW, namesNE, srcDir, srcExt);
-	CmFile::MkDir(dstDir);
-	for (int i = 0; i < imgN; i++)
-		CmFile::Copy(srcDir + namesNE[i] + srcExt, dstDir + namesNE[i] + dstSuffix);
-}
-
-vecS CmFile::loadStrList(CStr &fName)
-{
-	std::ifstream fIn(fName);
-	std::string line;
-	vecS strs;
-	while (getline(fIn, line) && line.size())
-		strs.push_back(line);
-	return strs;
-}
-
-bool CmFile::writeStrList(CStr &fName, const vecS &strs)
-{
-	FILE *f = fopen(_S(fName), "w");
-	if (f == NULL)
-		return false;
-	for (size_t i = 0; i < strs.size(); i++)
-		fprintf(f, "%s\n", _S(strs[i]));
-	fclose(f);
-	return true;
-}
-
+#endif
 #endif
