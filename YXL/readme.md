@@ -111,8 +111,8 @@ namespace YXL
 			static TestNode Get(const rapidjson::Value & val)
 			{
 				TestNode node;
-				node.f = val["f"].GetFloat();
-				node.i = val["i"].GetInt();
+				node.f = JsonGetFloat(val["f"]);
+				node.i = JsonGetInt(val["i"]);
 				node.s = JsonGetStr(val["s"]);
 				node.vec = FromJsonValueVec(int, val["vecI"]);
 				return node;
@@ -120,9 +120,10 @@ namespace YXL
 			static bool IsType(const rapidjson::Value & val)
 			{
 				//check all members' type if necessary
-				return val.IsObject() && val.HasMember("f") && val.HasMember("i")
-					&& val.HasMember("s")	&& val.HasMember("vecI")
-					&& JsonValIsTypeVec(int, val["vecI"]);
+				return JsonValHasMemberAndIsFloat(val, "f")
+					&& JsonValHasMemberAndIsInt(val, "i")
+					&& JsonValHasMemberAndIsStr(val, "s")
+					&& JsonValHasMemberAndIsIntVec(val, "vecI");
 			}
 		};
 	}

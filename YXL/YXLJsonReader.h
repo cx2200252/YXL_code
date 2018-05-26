@@ -3,8 +3,8 @@
 
 #undef min
 #undef max
-#include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
+#include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
 #include <fstream>
 #include <string>
 #include <vector>
