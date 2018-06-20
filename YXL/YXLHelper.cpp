@@ -978,3 +978,48 @@ namespace YXL
 
 
 #endif
+
+#ifdef _YXL_GLFW_
+namespace YXL
+{
+	static std::map<GLFWwindow*, GLFWBase*> s_glfw_map;
+	void GLFWKeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
+	{
+		if (s_glfw_map.find(window) != s_glfw_map.end())
+			s_glfw_map[window]->KeyCallback(key, scancode, action, mods);
+	}
+
+	bool GLFWBase::Init(const int wnd_w, const int wnd_h, const bool hidden)
+	{
+		if (wnd_w <= 0 || wnd_h <= 0)
+			return false;
+		glfwInit();
+		if(hidden)
+			glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
+		_wnd = glfwCreateWindow(1280, 720, "", NULL, NULL);
+		glfwMakeContextCurrent(_wnd);
+
+		glfwSwapInterval(0);
+
+		GLenum err = glewInit();
+		if (GLEW_OK != err)
+			return false;
+
+		s_glfw_map[_wnd] = this;
+		glfwSetKeyCallback(_wnd, YXL::GLFWKeyCallback);
+		return true;
+	}
+	void GLFWBase::Run()
+	{
+		while (!glfwWindowShouldClose(_wnd))
+		{
+			glfwMakeContextCurrent(_wnd);
+			Frame(_frame_id++);
+			glfwSwapBuffers(_wnd);
+			glfwPollEvents();
+		}
+		CleanUp();
+	}
+}
+
+#endif

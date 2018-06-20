@@ -14,6 +14,7 @@
 #define _YXL_TRANSFORM_
 #define _YXL_GRAPHIC_
 #define _YXL_IMG_PROC_
+//#define _YXL_GLFW_
 
 #include <string>
 #include <map>
@@ -23,6 +24,7 @@
 #include <map>
 #include <chrono>
 #include <mutex>
+#include <queue>
 
 #pragma warning(disable:4819)
 #ifdef YXL_HELPER_DYNAMIC
@@ -57,6 +59,11 @@ typedef std::vector<double> vecD;
 #endif
 
 //
+#ifdef _YXL_GLFW_
+#include <gl/glew.h>
+#include <GLFW/glfw3.h>
+#endif
+
 #ifdef _WITH_OPENCV_
 
 #define POINTER_64 __ptr64
@@ -718,6 +725,9 @@ namespace YXL
 #endif
 
 #ifdef _YXL_TIME_
+#ifdef __linux__
+#include <system.h>
+#endif
 namespace YXL
 {
 	inline std::string GetCurTime(const char* format_ymd_hms)
@@ -734,6 +744,24 @@ namespace YXL
 	inline std::string GetCurTime()
 	{
 		return GetCurTime("%04d%02d%02d_%02d%02d%02d");
+	}
+
+	inline void Sleep(double ms)
+	{
+#if defined(_WITH_WINDOWS_)
+		::Sleep(ms);
+#elif defined(__linux__)
+		usleep(ms*1000.);
+#else
+		std::cout << "no sleep function" << std::endl;
+#endif
+	}
+
+	template<typename type> double TimeEscapeMS(type start, type end)
+	{
+		using namespace std::chrono;
+		auto d = duration_cast<microseconds>(end - start);
+		return double(d.count()*1000.)*microseconds::period::num / microseconds::period::den;
 	}
 
 	class LIB_YXL_HELPER Timer
@@ -781,13 +809,6 @@ namespace YXL
 		}
 
 	private:
-		double TimeEscapeMS(const std::chrono::time_point<std::chrono::system_clock>& start,
-			const std::chrono::time_point<std::chrono::system_clock>& end)
-		{
-			using namespace std::chrono;
-			auto d = duration_cast<microseconds>(end - start);
-			return double(d.count()*1000.)*microseconds::period::num / microseconds::period::den;
-		}
 		double TimeEscapeAverage(const double cur_escape, std::pair<int, double>& history)
 		{
 			double ret = (history.first*history.second + cur_escape) / (history.first + 1);
@@ -807,6 +828,80 @@ namespace YXL
 	};
 
 	extern Timer g_timer;
+
+	class LIB_YXL_HELPER FPSCounter
+	{
+	public:
+		FPSCounter(const int measure_frame=1)
+		{
+			_measure_frame = measure_frame;
+			_last = std::chrono::system_clock::now();
+		}
+
+		//calculate current FPS
+		double CalcFPS()
+		{
+			auto cur = std::chrono::system_clock::now();
+			auto ms = TimeEscapeMS(_last, cur);
+			_last = cur;
+			_pre_frame_time_ms.push_back(ms);
+			_total += ms;
+			
+			if (_pre_frame_time_ms.size() > _measure_frame)
+			{
+				_total -= _pre_frame_time_ms.front();
+				_pre_frame_time_ms.pop_front();
+			}
+			
+			_fps = 1000.*_pre_frame_time_ms.size() / _total;
+			return _fps;
+		}
+
+		//not update, get last calculated FPS
+		double GetFPS()
+		{
+			return _fps;
+		}
+
+	private:
+		int _measure_frame;
+		double _total = 0.;
+		double _fps = 0.;
+		std::deque<double> _pre_frame_time_ms;
+		std::chrono::time_point<std::chrono::system_clock> _last;
+
+	};
+
+	class LIB_YXL_HELPER FPSLimiter
+	{
+	public:
+		FPSLimiter() {}
+		FPSLimiter(const double fps)
+		{
+			SetFPS(fps);
+		}
+		void SetFPS(const double fps)
+		{
+			_fps = fps;
+			_ms_per_frame = 1000. / fps;
+		}
+
+		void Start()
+		{
+			_last = std::chrono::system_clock::now();
+		}
+		void End()
+		{
+			auto ms = TimeEscapeMS(_last, std::chrono::system_clock::now());
+			if (ms < _ms_per_frame)
+				Sleep(_ms_per_frame - ms-1);
+		}
+
+	private:
+		double _fps = 30.;
+		double _ms_per_frame=1000./30.;
+		std::chrono::time_point<std::chrono::system_clock> _last;
+	};
 }
 #endif
 
@@ -1198,6 +1293,39 @@ namespace YXL
 namespace YXL
 {
 	cv::Mat LIB_YXL_HELPER FilterImage(cv::Mat img, cv::Mat kernel, cv::Mat mask = cv::Mat());
+}
+#endif
+
+#ifdef _YXL_GLFW_
+namespace YXL
+{
+	class LIB_YXL_HELPER GLFWBase
+	{
+	public:
+		virtual bool Init(const int wnd_w=1280, const int wnd_h=720, const bool hidden=false);
+		virtual void Run();
+		virtual void CleanUp() {}
+		virtual void Frame(const int frame_id) = 0;
+		virtual void KeyCallback(int key, int scancode, int action, int mods) 
+		{
+			/*if (action == GLFW_PRESS)
+			{
+				switch (key)
+				{
+				case GLFW_KEY_SPACE:
+					break;
+				default:
+					break;
+				}
+			}*/
+		}
+
+	protected:
+		GLFWwindow* _wnd = nullptr;
+
+	private:
+		int _frame_id = 0;
+	};
 }
 #endif
 
