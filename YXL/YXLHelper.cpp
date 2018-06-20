@@ -1,7 +1,598 @@
-#define POINTER_64 __ptr64
+#define _LIB_YXL_HELPER_IMPL
 #include "YXLHelper.h"
 #include <memory>
 
+#ifdef _WITH_WINDOWS_
+#include <shlobj.h>
+#include <Commdlg.h>
+#include <ShellAPI.h>
+#endif
+
+namespace YXL
+{
+#ifdef _YXL_OUT_STREAM_
+	YXLOut yxlout;
+#endif
+#ifdef _YXL_TIME_
+	Timer g_timer;
+#endif
+}
+
+#ifdef _YXL_FILES_
+namespace YXL
+{
+	vecS File::loadStrList(CStr &fName)
+	{
+		std::ifstream fIn(fName);
+		std::string line;
+		vecS strs;
+		while (getline(fIn, line) && line.empty() == false)
+			strs.push_back(line);
+		return strs;
+	}
+	bool File::writeStrList(CStr &fName, const vecS &strs)
+	{
+		FILE *f = fopen(_S(fName), "w");
+		if (f == NULL)
+			return false;
+		for (size_t i = 0; i < strs.size(); i++)
+			fprintf(f, "%s\n", _S(strs[i]));
+		fclose(f);
+		return true;
+	}
+
+#ifdef _WITH_WINDOWS_
+
+	std::pair<DWORD, DWORD> File::GetFileInfo(const std::string& file_path, FileInfo fi)
+	{
+		WIN32_FIND_DATAA ffd;
+		HANDLE hFind = FindFirstFileA(file_path.c_str(), &ffd);
+		if (INVALID_HANDLE_VALUE == hFind)
+			return std::pair<DWORD, DWORD>(-1, -1);
+
+		std::pair<DWORD, DWORD> ret;
+		switch (fi)
+		{
+		case FileInfo_CreateTime:
+			ret = std::make_pair(ffd.ftCreationTime.dwHighDateTime, ffd.ftCreationTime.dwLowDateTime);
+			break;
+		case FileInfo_LastAccessTime:
+			ret = std::make_pair(ffd.ftLastAccessTime.dwHighDateTime, ffd.ftLastAccessTime.dwLowDateTime);
+			break;
+		case FileInfo_LastWriteTime:
+			ret = std::make_pair(ffd.ftLastWriteTime.dwHighDateTime, ffd.ftLastWriteTime.dwLowDateTime);
+			break;
+		case FileInfo_FileSize:
+			ret = std::make_pair(ffd.nFileSizeHigh, ffd.nFileSizeLow);
+			break;
+		}
+		return ret;
+	}
+
+	std::string File::BrowseFile(const char * strFilter, bool isOpen, const std::string & def_dir, CStr & title)
+	{
+		static char Buffer[MAX_PATH];
+		GetCurrentDirectoryA(MAX_PATH, Buffer);
+		std::string dir = Buffer;
+
+		std::string def_dir2 = def_dir;
+		for (auto iter = def_dir2.begin(); iter != def_dir2.end(); ++iter)
+		{
+			if ('/' == *iter)
+			{
+				*iter = '\\';
+			}
+		}
+
+		std::string opened_dir = dir + "\\" + def_dir2;
+		if (false == FolderExist(opened_dir))
+		{
+			if (FolderExist(def_dir2))
+			{
+				opened_dir = def_dir2;
+			}
+			else
+			{
+				opened_dir = dir;
+			}
+		}
+
+		memset(Buffer, 0, sizeof(Buffer));
+		//strncpy(Buffer, opened_dir.c_str(), opened_dir.size());
+
+		OPENFILENAMEA   ofn;
+		memset(&ofn, 0, sizeof(ofn));
+		ofn.lStructSize = sizeof(ofn);
+		ofn.lpstrFile = Buffer;
+		ofn.nMaxFile = MAX_PATH;
+		ofn.lpstrFilter = strFilter;
+		ofn.nFilterIndex = 1;
+		ofn.Flags = OFN_PATHMUSTEXIST;
+
+		ofn.lpstrInitialDir = &opened_dir[0];
+		ofn.lpstrTitle = title.c_str();
+
+		if (isOpen) {
+			ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+			GetOpenFileNameA(&ofn);
+			SetCurrentDirectoryA(dir.c_str());
+			return Buffer;
+		}
+
+		GetSaveFileNameA(&ofn);
+
+		SetCurrentDirectoryA(dir.c_str());
+
+		return std::string(Buffer);
+	}
+
+	std::string File::BrowseFolder(CStr & title)
+	{
+		static char Buffer[MAX_PATH];
+		BROWSEINFOA bi;//Initial bi 	
+		bi.hwndOwner = NULL;
+		bi.pidlRoot = NULL;
+		bi.pszDisplayName = Buffer; // Dialog can't be shown if it's NULL
+		bi.lpszTitle = title.c_str();
+		bi.ulFlags = 0;
+		bi.lpfn = NULL;
+		bi.iImage = NULL;
+
+
+		LPITEMIDLIST pIDList = SHBrowseForFolderA(&bi); // Show dialog
+		if (pIDList) {
+			SHGetPathFromIDListA(pIDList, Buffer);
+			if (Buffer[strlen(Buffer) - 1] == '\\')
+				Buffer[strlen(Buffer) - 1] = 0;
+
+			return std::string(Buffer);
+		}
+		return std::string();
+	}
+
+	bool File::MkDir(CStr&  path)
+	{
+		if (path.size() == 0)
+			return false;
+
+		static char buffer[1024];
+		strcpy_s(buffer, sizeof(buffer), _S(path));
+		for (int i = 0; buffer[i] != 0; i++) {
+			if (buffer[i] == '\\' || buffer[i] == '/') {
+				buffer[i] = '\0';
+				CreateDirectoryA(buffer, 0);
+				buffer[i] = '/';
+			}
+		}
+		return CreateDirectoryA(_S(path), 0)==TRUE;
+	}
+
+	int File::Rename(CStr& srcNames, CStr& dstDir, const char* nameCommon, const char* nameExt)
+	{
+		vecS names;
+		std::string inDir;
+		int fNum = GetNames(srcNames, names, inDir);
+		for (int i = 0; i < fNum; i++) {
+			std::string dstName = cv::format("%s\\%.4d%s.%s", _S(dstDir), i, nameCommon, nameExt);
+			std::string srcName = inDir + names[i];
+			::CopyFileA(srcName.c_str(), dstName.c_str(), FALSE);
+		}
+		return fNum;
+	}
+
+	void File::RmFile(CStr& fileW)
+	{
+		vecS names;
+		std::string dir;
+		int fNum = GetNames(fileW, names, dir);
+		for (int i = 0; i < fNum; i++)
+			::DeleteFileA(_S(dir + names[i]));
+	}
+
+	void File::CleanFolder(CStr& dir, bool subFolder)
+	{
+		vecS names;
+		int fNum = GetNames(dir + "/*.*", names);
+		for (int i = 0; i < fNum; i++)
+			RmFile(dir + "/" + names[i]);
+
+		vecS subFolders;
+		int subNum = GetSubFolders(dir, subFolders);
+		if (subFolder)
+			for (int i = 0; i < subNum; i++)
+				CleanFolder(dir + "/" + subFolders[i], true);
+	}
+
+	void File::RmFolder(CStr& dir)
+	{
+		CleanFolder(dir);
+		if (FolderExist(dir))
+			RunProgram("Cmd.exe", cv::format("/c rmdir /s /q \"%s\"", _S(dir)), true, false);
+	}
+
+	int File::GetSubFolders(CStr & folder, vecS & subFolders)
+	{
+		subFolders.clear();
+		WIN32_FIND_DATAA fileFindData;
+		std::string nameWC = folder + "\\*";
+		HANDLE hFind = ::FindFirstFileA(nameWC.c_str(), &fileFindData);
+		if (hFind == INVALID_HANDLE_VALUE)
+			return 0;
+
+		do {
+			if (fileFindData.cFileName[0] == '.')
+				continue; // filter the '..' and '.' in the path
+			if (fileFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+				subFolders.push_back(fileFindData.cFileName);
+		} while (::FindNextFileA(hFind, &fileFindData));
+		FindClose(hFind);
+		return (int)subFolders.size();
+	}
+
+	int File::GetNames(CStr & nameW, vecS & names, std::string & dir)
+	{
+		dir = GetFolder(nameW);
+		names.clear();
+		names.reserve(6000);
+		WIN32_FIND_DATAA fileFindData;
+		HANDLE hFind = ::FindFirstFileA(_S(nameW), &fileFindData);
+		if (hFind == INVALID_HANDLE_VALUE)
+			return 0;
+
+		do {
+			if (fileFindData.cFileName[0] == '.')
+				continue; // filter the '..' and '.' in the path
+			if (fileFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+				continue; // Ignore sub-folders
+			names.push_back(fileFindData.cFileName);
+		} while (::FindNextFileA(hFind, &fileFindData));
+		FindClose(hFind);
+		return (int)names.size();
+	}
+
+	int File::GetNames(CStr & rootFolder, CStr & fileW, vecS & names)
+	{
+		GetNames(rootFolder + fileW, names);
+		vecS subFolders, tmpNames;
+		int subNum = GetSubFolders(rootFolder, subFolders);
+		for (int i = 0; i < subNum; i++) {
+			subFolders[i] += "/";
+			int subNum = GetNames(rootFolder + subFolders[i], fileW, tmpNames);
+			for (int j = 0; j < subNum; j++)
+				names.push_back(subFolders[i] + tmpNames[j]);
+		}
+		return (int)names.size();
+	}
+
+	int File::GetNamesNE(CStr & nameWC, vecS & names, std::string & dir, std::string & ext)
+	{
+		int fNum = GetNames(nameWC, names, dir);
+		ext = GetExtention(nameWC);
+		for (int i = 0; i < fNum; i++)
+			names[i] = GetNameNE(names[i]);
+		return fNum;
+	}
+
+	int File::GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names)
+	{
+		int fNum = GetNames(rootFolder, fileW, names);
+		size_t extS = GetExtention(fileW).size();
+		for (int i = 0; i < fNum; i++)
+			names[i].resize(names[i].size() - extS);
+		return fNum;
+	}
+
+	bool File::Move2Dir(CStr & srcW, CStr dstDir)
+	{
+		vecS names;
+		std::string inDir;
+		int fNum = GetNames(srcW, names, inDir);
+		bool r = true;
+		for (int i = 0; i < fNum; i++)
+			if (Move(inDir + names[i], dstDir + names[i]) == false)
+				r = false;
+		return r;
+	}
+
+	bool File::Copy2Dir(CStr & srcW, CStr dstDir)
+	{
+		vecS names;
+		std::string inDir;
+		int fNum = GetNames(srcW, names, inDir);
+		bool r = true;
+		for (int i = 0; i < fNum; i++)
+			if (Copy(inDir + names[i], dstDir + names[i]) == false)
+				r = false;
+		return r;
+	}
+
+	void File::RunProgram(CStr & fileName, CStr & parameters, bool waiteF, bool showW)
+	{
+		std::string runExeFile = fileName;
+#ifdef _DEBUG
+		runExeFile.insert(0, "..\\Debug\\");
+#else
+		runExeFile.insert(0, "..\\Release\\");
+#endif // _DEBUG
+		if (!FileExist(_S(runExeFile)))
+			runExeFile = fileName;
+
+		std::string wkDir = GetWkDir();
+
+		SHELLEXECUTEINFOA  ShExecInfo = { 0 };
+		ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+		ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+		ShExecInfo.hwnd = NULL;
+		ShExecInfo.lpVerb = NULL;
+		ShExecInfo.lpFile = _S(runExeFile);
+		ShExecInfo.lpParameters = _S(parameters);
+		ShExecInfo.lpDirectory = wkDir.c_str();
+		ShExecInfo.nShow = showW ? SW_SHOW : SW_HIDE;
+		ShExecInfo.hInstApp = NULL;
+		ShellExecuteExA(&ShExecInfo);
+
+		//CmLog::LogLine("Run: %s %s\n", ShExecInfo.lpFile, ShExecInfo.lpParameters);
+
+		if (waiteF)
+			WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+	}
+
+#else
+#ifdef _WITH_QT_
+	std::shared_ptr<QApplication> File::_app = nullptr;
+
+	std::string File::BrowseFolder(CStr& title)
+	{
+		auto dir = QFileDialog::getExistingDirectory(nullptr, QString::fromLocal8Bit(_S(title)));
+		return (std::string)dir.toLocal8Bit();
+	}
+
+	std::string File::BrowseFile(const char* strFilter, bool isOpen, const std::string& def_dir, CStr& title)
+	{
+		auto wkdir = GetWkDir();
+		std::string opened_dir = wkdir + "\\" + def_dir;
+		if (false == FolderExist(opened_dir))
+		{
+			if (FolderExist(def_dir))
+			{
+				opened_dir = def_dir;
+			}
+			else
+			{
+				opened_dir = wkdir;
+			}
+		}
+
+		QString qPath;
+		if (isOpen)
+			qPath = QFileDialog::getOpenFileName(nullptr, QString::fromLocal8Bit(_S(title)), QString::fromLocal8Bit(_S(opened_dir)), QString::fromLocal8Bit(strFilter));
+		else
+			qPath = QFileDialog::getSaveFileName(nullptr, QString::fromLocal8Bit(_S(title)), QString::fromLocal8Bit(_S(opened_dir)), QString::fromLocal8Bit(strFilter));
+
+		return (std::string)qPath.toLocal8Bit();
+	}
+
+	int File::GetNames(CStr &nameW, vecS &names, std::string &dir)
+	{
+		dir = GetFolder(nameW);
+		names.clear();
+		names.reserve(6000);
+
+		QDir fromDir(QString::fromLocal8Bit(dir.c_str()));
+		QStringList filters;
+		filters.append(QString::fromLocal8Bit(nameW.substr(dir.length(), nameW.length() - dir.length()).c_str()));
+		QFileInfoList fileInfoList = fromDir.entryInfoList(filters, QDir::Dirs | QDir::Files);
+		foreach(QFileInfo fileInfo, fileInfoList)
+		{
+			if (fileInfo.fileName() == "." || fileInfo.fileName() == "..")
+				continue;
+			if (fileInfo.isFile())
+			{
+				names.push_back((std::string)fileInfo.fileName().toLocal8Bit());
+			}
+		}
+		return (int)names.size();
+	}
+
+	int File::GetNames(CStr& rootFolder, CStr &fileW, vecS &names)
+	{
+		std::string dir;
+		GetNames(rootFolder + fileW, names, dir);
+		vecS subFolders, tmpNames;
+		int subNum = GetSubFolders(rootFolder, subFolders);
+		for (int i = 0; i < subNum; i++) {
+			subFolders[i] += "/";
+			int subNum = GetNames(rootFolder + subFolders[i], fileW, tmpNames);
+			for (int j = 0; j < subNum; j++)
+				names.push_back(subFolders[i] + tmpNames[j]);
+		}
+		return (int)names.size();
+	}
+
+	int File::GetNamesNE(CStr& nameWC, vecS &names, std::string &dir, std::string &ext)
+	{
+		int fNum = GetNames(nameWC, names, dir);
+		ext = GetExtention(nameWC);
+		for (int i = 0; i < fNum; i++)
+			names[i] = GetNameNE(names[i]);
+		return fNum;
+	}
+
+	int File::GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names)
+	{
+		int fNum = GetNames(rootFolder, fileW, names);
+		size_t extS = GetExtention(fileW).size();
+		for (int i = 0; i < fNum; i++)
+			names[i].resize(names[i].size() - extS);
+		return fNum;
+	}
+
+	bool File::MkDir(CStr&  _path)
+	{
+		if (_path.size() == 0)
+			return false;
+
+		QDir dir;
+		static char buffer[1024];
+		strcpy(buffer, _S(_path));
+		for (int i = 0; buffer[i] != 0; i++) {
+			if (buffer[i] == '\\' || buffer[i] == '/') {
+				buffer[i] = '\0';
+				dir.mkdir(QString::fromLocal8Bit(buffer));
+				buffer[i] = '/';
+			}
+		}
+		return dir.mkdir(QString::fromLocal8Bit(_S(_path)));
+	}
+
+	int File::Rename(CStr& _srcNames, CStr& _dstDir, const char *nameCommon, const char *nameExt)
+	{
+		vecS names;
+		std::string inDir;
+		int fNum = GetNames(_srcNames, names, inDir);
+		for (int i = 0; i < fNum; i++) {
+			std::string dstName = cv::format("%s\\%.4d%s.%s", _S(_dstDir), i, nameCommon, nameExt);
+			std::string srcName = inDir + names[i];
+			QFile file;
+			file.rename(QString::fromLocal8Bit(_S(srcName)), QString::fromLocal8Bit(_S(dstName)));
+		}
+		return fNum;
+	}
+
+	void File::RmFile(CStr& fileW)
+	{
+		vecS names;
+		std::string dir;
+		int fNum = GetNames(fileW, names, dir);
+		for (int i = 0; i < fNum; i++)
+		{
+			QFile f(QString::fromStdString(dir + names[i]));
+			f.remove();
+		}
+	}
+
+	void File::CleanFolder(CStr& dir, bool subFolder)
+	{
+		vecS names;
+		std::string tmp;
+		int fNum = GetNames(dir + "/*.*", names, tmp);
+		for (int i = 0; i < fNum; i++)
+			RmFile(dir + "/" + names[i]);
+
+		vecS subFolders;
+		int subNum = GetSubFolders(dir, subFolders);
+		if (subFolder)
+			for (int i = 0; i < subNum; i++)
+				CleanFolder(dir + "/" + subFolders[i], true);
+	}
+
+	int File::GetSubFolders(CStr& folder, vecS& subFolders)
+	{
+		subFolders.clear();
+
+		QDir dir(QString::fromLocal8Bit(_S(folder)));
+		foreach(QFileInfo fileInfo, dir.entryInfoList(QDir::Dirs | QDir::Files))
+		{
+			QString strName = fileInfo.fileName();
+			if ((strName == QString(".")) || (strName == QString("..")))
+				continue;
+			if (fileInfo.isDir())
+				subFolders.push_back((std::string)strName.toLocal8Bit());
+		}
+		return (int)subFolders.size();
+	}
+
+	bool File::Move2Dir(CStr &srcW, CStr dstDir)
+	{
+		vecS names;
+		std::string inDir;
+		int fNum = GetNames(srcW, names, inDir);
+		bool r = true;
+		for (int i = 0; i < fNum; i++)
+			if (Move(inDir + names[i], dstDir + names[i]) == false)
+				r = false;
+		return r;
+	}
+
+	bool File::Copy2Dir(CStr &srcW, CStr dstDir)
+	{
+		vecS names;
+		std::string inDir;
+		int fNum = GetNames(srcW, names, inDir);
+		bool r = true;
+		for (int i = 0; i < fNum; i++)
+			if (Copy(inDir + names[i], dstDir + names[i]) == false)
+				r = false;
+		return r;
+	}
+
+	void File::RunProgram(CStr &fileName, CStr &parameters, bool waiteF, bool showW)
+	{
+		std::string runExeFile = fileName;
+#ifdef _DEBUG
+		runExeFile.insert(0, "..\\Debug\\");
+#else
+		runExeFile.insert(0, "..\\Release\\");
+#endif // _DEBUG
+		if (!FileExist(_S(runExeFile)))
+			runExeFile = fileName;
+
+		std::string wkDir = GetWkDir();
+
+		QProcess proc;
+		QStringList param(QString::fromLocal8Bit(_S(parameters)));
+
+		proc.start(QString::fromLocal8Bit(_S(fileName)), param);
+
+		if (waiteF)
+			proc.waitForFinished();
+	}
+
+#endif
+#endif
+}
+#endif
+
+#ifdef _YXL_UNION_FIND_
+namespace YXL
+{
+	void UnionFind::Union(int a, int b)
+	{
+		a = Find(a);
+		b = Find(b);
+		if (a == b)
+			return;
+		if (_group_size[a] < _group_size[b])
+		{
+			std::swap(a, b);
+		}
+		_id[b] = a;
+		_group_size[a] += _group_size[b];
+		_group_size.erase(_group_size.find(b));
+		--_group_cnt;
+	}
+
+	void UnionFind::Update()
+	{
+		_group_id.resize(_id.size());
+		std::map<int, int> id_map;
+		for (int i(0); i != _id.size(); ++i)
+		{
+			int ii = Find(i);
+			if (id_map.find(ii) == id_map.end())
+			{
+				id_map[ii] = static_cast<int>(id_map.size());
+				_groups[id_map[ii]].reserve(_group_size[ii]);
+			}
+			_group_id[i] = id_map[ii];
+			_groups[id_map[ii]].push_back(i);
+		}
+
+	} 
+}
+#endif
+
+#ifdef _YXL_OTHER_
 namespace YXL
 {
 	namespace SHA1
@@ -276,140 +867,43 @@ namespace YXL
 #undef X  
 		}
 
-		std::string SHA1Digest(std::string str)
+		
+	}
+
+	std::string SHA1Digest(std::string str)
+	{
+		using namespace SHA1;
+
+		SHA1_CONTEXT ctx;
+
+		unsigned char* tmp = new unsigned char[str.length()];
+		for (int i(0); i != str.length(); ++i)
+			tmp[i] = str[i];
+
+		sha1_init(&ctx);
+		sha1_write(&ctx, tmp, str.length());
+		sha1_final(&ctx);
+
+		delete[] tmp;
+
+		char tmp2[41];
+		std::string  hexstr = "0123456789abcdef";
+
+		for (int i(0); i != 20; ++i)
 		{
-			SHA1_CONTEXT ctx;
-
-			unsigned char* tmp = new unsigned char[str.length()];
-			for (int i(0); i != str.length(); ++i)
-			{
-				tmp[i] = str[i];
-			}
-
-			sha1_init(&ctx);
-			sha1_write(&ctx, tmp, str.length());
-			sha1_final(&ctx);
-
-			delete[] tmp;
-
-			char tmp2[41];
-			std::string  hexstr = "0123456789abcdef";
-
-			for (int i(0); i != 20; ++i)
-			{
-				tmp2[i * 2] = hexstr[int(u32(ctx.buf[i]) >> 4)];
-				tmp2[i * 2 + 1] = hexstr[int(u32(ctx.buf[i]) & 15u)];
-			}
-			tmp2[40] = '\0';
-
-			return tmp2;
+			tmp2[i * 2] = hexstr[int(u32(ctx.buf[i]) >> 4)];
+			tmp2[i * 2 + 1] = hexstr[int(u32(ctx.buf[i]) & 15u)];
 		}
+		tmp2[40] = '\0';
+
+		return tmp2;
 	}
-
-
-	YXLOutStream<char, std::char_traits<char> > yxlout;
-	int UnionFind::GroupCount() const
-	{
-		return _group_cnt;
-	}
-
-	bool UnionFind::IsConnected(const int a, const int b) const
-	{
-		return Find(a) == Find(b);
-	}
-
-	int UnionFind::Find(int a) const
-	{
-		while (a != _id[a])
-		{
-			a = _id[a];
-		}
-		return a;
-	}
-
-	void UnionFind::Union(int a, int b)
-	{
-		a = Find(a);
-		b = Find(b);
-		if (a == b)
-			return;
-		if (_group_size[a] < _group_size[b])
-		{
-			std::swap(a, b);
-		}
-		_id[b] = a;
-		_group_size[a] += _group_size[b];
-		_group_size.erase(_group_size.find(b));
-		--_group_cnt;
-	}
-
-	void UnionFind::Update()
-	{
-		_group_id.resize(_id.size());
-		std::map<int, int> id_map;
-		for (int i(0); i != _id.size(); ++i)
-		{
-			int ii = Find(i);
-			if (id_map.find(ii) == id_map.end())
-			{
-				id_map[ii] = id_map.size();
-				_groups[id_map[ii]].reserve(_group_size[ii]);
-			}
-			_group_id[i] = id_map[ii];
-			_groups[id_map[ii]].push_back(i);
-		}
-
-	}
-
-	int UnionFind::GroupID(const int a) const
-	{
-		return (0 <= a&&a < _group_id.size()) ? _group_id[a] : -1;
-	}
-
-	const std::vector<int>* UnionFind::Group(const int group_id)
-	{
-		return (0 <= group_id && group_id < _group_cnt) ? &(_groups[group_id]) : nullptr;
-	}
-
-
 }
+#endif
 
-#ifdef CV_VERSION
-#undef min
-#undef max
+#ifdef _YXL_IMG_PROC_
 namespace YXL
 {
-	cv::Mat ComputeMeshNormal(cv::Mat vertices, cv::Mat tris, bool is_reverse_normal)
-	{
-		{
-			using namespace std;
-			using namespace cv;
-			cv::Mat normals = Mat(vertices.size(), vertices.type(), cv::Scalar(0, 0, 0, 0));
-			for (int i(0); i != tris.rows; ++i)
-			{
-				Vec3i tri = tris.at<Vec3i>(i);
-
-				int idx[3] = { tri[is_reverse_normal ? 2 : 0], tri[1], tri[is_reverse_normal ? 0 : 2] };
-
-				Vec3f p0 = vertices.at<Vec3f>(idx[0]);
-				Vec3f p1 = vertices.at<Vec3f>(idx[1]);
-				Vec3f p2 = vertices.at<Vec3f>(idx[2]);
-
-				Vec3f a = p0 - p1, b = p1 - p2, c = p2 - p0;
-				float l2a = a.dot(a), l2b = b.dot(b), l2c = c.dot(c);
-				Vec3f facenormal = a.cross(b);
-				normals.at<Vec3f>(idx[0]) += facenormal*(1.0f / (l2a*l2c));
-				normals.at<Vec3f>(idx[1]) += facenormal*(1.0f / (l2b*l2a));
-				normals.at<Vec3f>(idx[2]) += facenormal*(1.0f / (l2c*l2b));
-			}
-			for (int i(0); i != normals.rows; ++i)
-			{
-				normals.at<Vec3f>(i) = cv::normalize(normals.at<Vec3f>(i));
-			}
-			return normals;
-		}
-	}
-
 	template<typename basicType, int ch> cv::Mat _FilterImage(cv::Mat img, cv::Mat kernel, cv::Mat mask)
 	{
 		bool no_mask = mask.empty() != false;
@@ -427,7 +921,7 @@ namespace YXL
 			{
 				cv::Vec4d acc=cv::Vec4d::all(0);
 				double cnt = 0;
-				for (int k = std::max(0, j - half_ksize); k <= std::min(img.cols - 1, j + half_ksize); ++k)
+				for (int k = (std::max)(0, j - half_ksize); k <= (std::min)(img.cols - 1, j + half_ksize); ++k)
 					if (no_mask || mask.at<uchar>(i, k) > 0)
 					{
 						int m = k - (j - half_ksize);
@@ -448,7 +942,7 @@ namespace YXL
 			{
 				cv::Vec4d acc = cv::Vec4d::all(0);
 				double cnt = 0;
-				for (int k = std::max(0, i - half_ksize); k <= std::min(img.rows - 1, i + half_ksize); ++k)
+				for (int k = (std::max)(0, i - half_ksize); k <= (std::min)(img.rows - 1, i + half_ksize); ++k)
 					if (no_mask || mask.at<uchar>(k, j) > 0)
 					{
 						int m = k - (i - half_ksize);

@@ -1,85 +1,130 @@
-#pragma once
+#ifndef _YXL_HELPER_H_
+#define _YXL_HELPER_H_
+
+//which modul to use
+#define _YXL_OTHER_
+#define _YXL_FILES_
+#define _YXL_STRING_
+#define _YXL_PARAM_PARSER_
+#define _YXL_PRINT_
+#define _YXL_OUT_STREAM_
+#define _YXL_UNION_FIND_
+#define _YXL_TIME_
+#define _YXL_CONSOLE_
+#define _YXL_TRANSFORM_
+#define _YXL_GRAPHIC_
+#define _YXL_IMG_PROC_
+
 #include <string>
 #include <map>
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <map>
+#include <chrono>
+#include <mutex>
 
+#pragma warning(disable:4819)
+#ifdef YXL_HELPER_DYNAMIC
+#ifndef LIB_YXL_HELPER
+#ifdef _LIB_YXL_HELPER_IMPL
+#define LIB_YXL_HELPER __declspec(dllexport)
+#else
+#define LIB_YXL_HELPER __declspec(dllimport)
+#endif
+#endif
+#else
+#define LIB_YXL_HELPER
+#endif
+
+typedef const std::string CStr;
+typedef std::vector<std::string> vecS;
+typedef std::vector<int> vecI;
+typedef std::vector<std::string> vecS;
+typedef std::vector<float> vecF;
+typedef std::vector<double> vecD;
+#define _S(str) ((str).c_str())
+
+//check marco
+#ifndef _WITH_WINDOWS_
+#undef _YXL_CONSOLE_
+#endif
+#ifndef _YXL_TRANSFORM_
+#undef _YXL_GRAPHIC_
+#endif
+#ifndef _WITH_OPENCV_
+#undef _YXL_IMG_PROC_
+#endif
+
+//
+#ifdef _WITH_OPENCV_
+
+#define POINTER_64 __ptr64
 #include <opencv2/opencv.hpp>
 
-//#define _NO_WINDOWS_
-
-#ifndef _NO_WINDOWS_
-#include <Windows.h>
+#ifndef CV_LIB
+#define CV_VERSION_ID CVAUX_STR(CV_MAJOR_VERSION) CVAUX_STR(CV_MINOR_VERSION) CVAUX_STR(CV_SUBMINOR_VERSION)
+#ifdef _DEBUG
+#define CV_LIB(name) "opencv_" name CV_VERSION_ID "d"
 #else
-#include <qdatetime.h>
-#include <qmutex.h>
+#define CV_LIB(name) "opencv_" name CV_VERSION_ID
+#endif
 #endif
 
-namespace YXL
-{
-	inline std::string GetCurTime()
-	{
-#ifndef _NO_WINDOWS_
-		SYSTEMTIME time;
-
-		GetLocalTime(&time);
-
-		char tmp[21] = {};
-
-		sprintf_s(tmp, sizeof(tmp), "%04d%02d%02d_%02d%02d%02d",
-			time.wYear,
-			time.wMonth,
-			time.wDay,
-			time.wHour,
-			time.wMinute,
-			time.wSecond);
-
-		return std::string(tmp);
-#else
-		QDateTime time = QDateTime::currentDateTime();
-		QString str = time.toString("yyyyMMdd_hhmmss");
-		return str.toStdString();
-#endif
+#define CV_Assert_(expr, args) \
+{\
+	if(!(expr)) {\
+	std::string msg = cv::format args; \
+	printf("%s in %s:%d\n", msg.c_str(), __FILE__, __LINE__); \
+	cv::error(cv::Exception(CV_StsAssert, msg, __FUNCTION__, __FILE__, __LINE__) ); }\
 }
 
-	inline std::string ToUnixPath(const std::string& str)
-	{
-		std::string path = str;
-		for (auto iter = path.begin(); iter != path.end(); ++iter)
-			if ('\\' == *iter)
-				*iter = '/';
-		return path;
-	}
+#pragma comment( lib, CV_LIB("core"))
+#pragma comment( lib, CV_LIB("imgproc"))
+#pragma comment( lib, CV_LIB("highgui"))
 
-	inline std::string ToWindowsPath(const std::string& str)
-	{
-		std::string path = str;
-		for (auto iter = path.begin(); iter != path.end(); ++iter)
-			if ('/' == *iter)
-				*iter = '\\';
-		return path;
-	}
 
-	inline std::string CheckDirPath(const std::string& str)
-	{
-		if ('/' == *str.rbegin() || '\\' == *str.rbegin())
-			return str;
-		else
-			return str + "/";
-	}
+#if (2 < CV_MAJOR_VERSION)
+#pragma comment( lib, CV_LIB("imgcodecs"))
+#endif
 
-	inline std::string ReplaceStrings(const std::string& str, std::map<std::string, std::string>& replace_strs)
-	{
-		std::string res = str;
-		size_t pos=0;
-		for (auto& rep:replace_strs)
-			while (std::string::npos != (pos = res.find(rep.first)))
-				res.replace(pos, rep.first.length(), rep.second);
-		return res;
-	}
+typedef const cv::Mat CMat;
+typedef std::vector<cv::Mat> vecM;
 
+#endif
+
+#ifdef _WITH_WINDOWS_
+#include <Windows.h>
+#else
+#ifdef _WITH_QT_
+#include <qdir.h>
+#include <qprocess.h>
+#include <QtWidgets/qfiledialog.h>
+#include <QtWidgets/QApplication.h>
+#include <qdatetime.h>
+#include <qmutex.h>
+
+#ifdef _DEBUG
+#pragma comment(lib, "Qt5Cored.lib")
+#pragma comment(lib, "Qt5Guid.lib")
+#pragma comment(lib, "Qt5Widgetsd.lib")
+#else
+#pragma comment(lib, "Qt5Core.lib")
+#pragma comment(lib, "Qt5Gui.lib")
+#pragma comment(lib, "Qt5Widgets.lib")
+#endif
+#endif
+#endif
+
+#ifdef _WIN32
+#define _CRT_SECURE_NO_DEPRECATE
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
+
+#ifdef _YXL_OTHER_
+namespace YXL
+{
 	inline long long MakeLongLong(const unsigned int a, const unsigned int b)
 	{
 		return ((unsigned long long)a) << 32 | (unsigned long long)b;
@@ -90,66 +135,385 @@ namespace YXL
 		return std::make_pair((unsigned int)(l >> 32), (unsigned int)(l & 0xffffffff));
 	}
 
-	inline size_t FileSize(std::ifstream& file)
+	std::string LIB_YXL_HELPER SHA1Digest(std::string str);
+
+	inline int GetCurrentThreadID()
 	{
-		std::streampos oldPos = file.tellg();
-
-		file.seekg(0, std::ios::beg);
-		std::streampos beg = file.tellg();
-		file.seekg(0, std::ios::end);
-		std::streampos end = file.tellg();
-
-		file.seekg(oldPos, std::ios::beg);
-
-		return static_cast<size_t>(end - beg);
+#if defined(_WITH_WINDOWS_)
+		return GetCurrentThreadId();
+#elif defined(__linux__)
+		return gettid();
+#else
+		return 0;
+#endif
 	}
-	inline size_t FileSize(const std::string& filename)
-	{
-		std::ifstream fin(filename);
-		size_t ret = FileSize(fin);
-		fin.close();
-		return ret;
-	}
+}
+#endif
 
-	template<typename type> bool LoadFileContentBinary(const std::string& filepath, std::vector<type>& data)
+#ifdef _YXL_FILES_
+namespace YXL
+{
+	class LIB_YXL_HELPER File
 	{
-		std::ifstream fin(filepath, std::ios::binary);
-		if (false == fin.good())
+	public:
+		static std::string ToUnixPath(const std::string& str)
 		{
-			fin.close();
-			return false;
+			std::string path = str;
+			for (auto iter = path.begin(); iter != path.end(); ++iter)
+				if ('\\' == *iter)
+					*iter = '/';
+			return path;
 		}
-		size_t size = FileSize(fin);
-		if (0 == size)
+		static std::string ToWindowsPath(const std::string& str)
 		{
-			fin.close();
-			return false;
+			std::string path = str;
+			for (auto iter = path.begin(); iter != path.end(); ++iter)
+				if ('/' == *iter)
+					*iter = '\\';
+			return path;
 		}
-		data.resize(size / sizeof(type));
-		fin.read(reinterpret_cast<char*>(&data[0]), size);
+		static std::string CheckDirPath(const std::string& str)
+		{
+			return ('/' == *str.rbegin() || '\\' == *str.rbegin()) ? str : str + "/";
+		}
+		static std::string GetFolder(CStr& path)
+		{
+			return path.substr(0, path.find_last_of("\\/") + 1);
+		}
+		static std::string GetName(CStr& path)
+		{
+			size_t start = path.find_last_of("\\/") + 1;
+			size_t end = path.find_last_not_of(' ') + 1;
+			return path.substr(start, end - start);
+		}
+		static std::string GetNameNE(CStr& path)
+		{
+			size_t start = path.find_last_of("\\/") + 1;
+			size_t end = path.find_last_of('.');
+			if (end >= 0)
+				return path.substr(start, end - start);
+			else
+				return path.substr(start, path.find_last_not_of(' ') + 1 - start);
+		}
+		static std::string GetPathNE(CStr& path)
+		{
+			size_t end = path.find_last_of('.');
+			if (end >= 0)
+				return path.substr(0, end);
+			else
+				return path.substr(0, path.find_last_not_of(' ') + 1);
+		}
+		static std::string GetExtention(CStr name)
+		{
+			return name.substr(name.find_last_of('.'));
+		}
+		static void WriteNullFile(CStr& fileName) 
+		{
+			FILE *f = fopen(_S(fileName), "w"); 
+			fclose(f); 
+		}
+		static vecS loadStrList(CStr &fName);
+		static bool writeStrList(CStr &fName, const vecS &strs);
 
-		fin.close();
-		return true;
-	}
+		static size_t FileSize(std::ifstream& file)
+		{
+			std::streampos oldPos = file.tellg();
 
-	inline void LoadFileContent(const std::string& path, std::string& content) 
+			file.seekg(0, std::ios::beg);
+			std::streampos beg = file.tellg();
+			file.seekg(0, std::ios::end);
+			std::streampos end = file.tellg();
+
+			file.seekg(oldPos, std::ios::beg);
+
+			return static_cast<size_t>(end - beg);
+		}
+		static size_t FileSize(const std::string& filename)
+		{
+			std::ifstream fin(filename);
+			size_t ret = FileSize(fin);
+			fin.close();
+			return ret;
+		}
+
+		static bool LoadFileContentBinary(const std::string& filepath, std::string& data)
+		{
+			std::ifstream fin(filepath, std::ios::binary);
+			if (false == fin.good())
+			{
+				fin.close();
+				return false;
+			}
+			size_t size = FileSize(fin);
+			if (0 == size)
+			{
+				fin.close();
+				return false;
+			}
+			data.resize(size);
+			fin.read(reinterpret_cast<char*>(&data[0]), size);
+			fin.close();
+			return true;
+		}
+
+		static void LoadFileContent(const std::string& path, std::string& content)
+		{
+			content = "";
+			std::ifstream fin(path);
+			std::string line;
+			while (getline(fin, line))
+				content += line + "\n";
+			fin.close();
+		}
+
+		template<typename VertexType, typename IndexType> static void SavePlainObjFile(const std::string& save_path, const VertexType* vertices, const int vertex_cnt, const IndexType* face, const int face_cnt)
+		{
+			std::ofstream fout(save_path);
+			for (int i(0); i != vertex_cnt; ++i)
+			{
+				fout << "v " << vertices[0] << " " << vertices[1] << " " << vertices[2] << "\n";
+				vertices += 3;
+			}
+			for (int i(0); i != face_cnt; ++i)
+			{
+				fout << "f ";
+				for (int j(0); j != 3; ++j)
+				{
+					fout << face[2 - j] + 1 << " ";
+				}
+				fout << "\n";
+				face += 3;
+			}
+			fout.close();
+		}
+
+#if defined(_WITH_WINDOWS_) || defined(_WITH_QT_)
+		static std::string ToAbsolutePath(const std::string& path)
+		{
+			if (path.length() > 2 && path[1] == ':')
+				return path;
+			return GetWkDir() + "/" + path;
+		}
+#endif
+
+#ifdef _WITH_WINDOWS_
+		enum FileInfo {
+			FileInfo_CreateTime,
+			FileInfo_LastAccessTime,
+			FileInfo_LastWriteTime,
+			FileInfo_FileSize
+		};
+		//return high-low
+		static std::pair<DWORD, DWORD> GetFileInfo(const std::string& file_path, FileInfo fi);
+
+		static std::string BrowseFile(const char* strFilter = "Images (*.jpg;*.png)\0*.jpg;*.png\0All (*.*)\0*.*\0\0", bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
+		static std::string BrowseFolder(CStr& title = "BrowseFolder");
+
+		// Get file names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
+		static int GetNames(CStr &nameW, vecS &names, std::string &dir = std::string());
+		static int GetNames(CStr& rootFolder, CStr &fileW, vecS &names);
+		static int GetNamesNE(CStr& nameWC, vecS &names, std::string &dir = std::string(), std::string &ext = std::string());
+		static int GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names);
+
+		static bool FileExist(CStr& filePath)
+		{
+			if (filePath.size() == 0)
+				return false;
+			return  GetFileAttributesA(_S(filePath)) != INVALID_FILE_ATTRIBUTES;
+		}
+		//FilesExist("./*.jpg")
+		static bool FilesExist(CStr& fileW)
+		{
+			vecS names;
+			int fNum = GetNames(fileW, names);
+			return fNum > 0;
+		}
+		static bool FolderExist(CStr& strPath)
+		{
+			int i = (int)strPath.size() - 1;
+			for (; i >= 0 && (strPath[i] == '\\' || strPath[i] == '/'); i--)
+				;
+			std::string str = strPath.substr(0, i + 1);
+
+			WIN32_FIND_DATAA  wfd;
+			HANDLE hFind = FindFirstFileA(_S(str), &wfd);
+			bool rValue = (hFind != INVALID_HANDLE_VALUE) && (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+			FindClose(hFind);
+			return rValue;
+		}
+
+		static std::string GetWkDir()
+		{
+			std::string wd;
+			wd.resize(1024);
+			DWORD len = GetCurrentDirectoryA(1024, &wd[0]);
+			wd.resize(len);
+			return wd;
+		}
+		static void SetWkDir(CStr& dir)
+		{
+			SetCurrentDirectoryA(dir.c_str());
+		}
+
+		static bool MkDir(CStr&  path);
+
+		// Eg: RenameImages("D:/DogImages/*.jpg", "F:/Images", "dog", ".jpg");
+		static int Rename(CStr& srcNames, CStr& dstDir, const char* nameCommon, const char* nameExt);
+
+		//RmFile("./*.jpg")
+		static void RmFile(CStr& fileW);
+		static void CleanFolder(CStr& dir, bool subFolder = false);
+		static void RmFolder(CStr& dir);
+		
+
+		static int GetSubFolders(CStr& folder, vecS& subFolders);
+
+		static bool Copy(CStr &src, CStr &dst, bool failIfExist = false)
+		{
+			return ::CopyFileA(src.c_str(), dst.c_str(), failIfExist)==TRUE;
+		}
+		static bool Move(CStr &src, CStr &dst, DWORD dwFlags = MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED | MOVEFILE_WRITE_THROUGH)
+		{
+			return MoveFileExA(src.c_str(), dst.c_str(), dwFlags)==TRUE;
+		}
+		//Move2Dir("./*.jpg", "../")
+		static bool Move2Dir(CStr &srcW, CStr dstDir);
+		//Copy2Dir("./*.jpg", "../")
+		static bool Copy2Dir(CStr &srcW, CStr dstDir);
+
+		static void RunProgram(CStr &fileName, CStr &parameters = "", bool waiteF = false, bool showW = true);
+#else
+#ifdef _WITH_QT_
+		static void InitQApplication(int argc, char** argv)
+		{
+			if (nullptr == _app)
+				_app = std::shared_ptr<QApplication>(new QApplication(argc, argv));
+		}
+		//may need call CmFile::InitQApplication first
+		static std::string BrowseFile(const char* strFilter = "Images (*.jpg *.png);;All (*.*)", bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
+		//may need call CmFile::InitQApplication first
+		static std::string BrowseFolder(CStr& title = "BrowseFolder");
+
+		// Get file names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
+		static int GetNames(CStr &nameW, vecS &names, std::string &dir);
+		static int GetNames(CStr& rootFolder, CStr &fileW, vecS &names);
+		static int GetNamesNE(CStr& nameWC, vecS &names, std::string &dir, std::string &ext);
+		static int GetNamesNE(CStr& rootFolder, CStr &fileW, vecS &names);
+
+		static inline bool FileExist(CStr& filePath)
+		{
+			if (filePath.size() == 0)
+				return false;
+
+			QFile file(QString::fromLocal8Bit(_S(filePath)));
+			return file.exists();
+		}
+		static inline bool FilesExist(CStr& fileW)
+		{
+			vecS names;
+			std::string dir;
+			int fNum = GetNames(fileW, names, dir);
+			return fNum > 0;
+		}
+		static inline bool FolderExist(CStr& strPath)
+		{
+			int i = (int)strPath.size() - 1;
+			for (; i >= 0 && (strPath[i] == '\\' || strPath[i] == '/'); i--)
+				;
+			std::string str = strPath.substr(0, i + 1);
+
+			QDir dir(QString::fromLocal8Bit(_S(str)));
+			return dir.exists();
+		}
+
+		static inline std::string GetWkDir()
+		{
+			QDir dir;
+			return dir.currentPath().toLocal8Bit();
+		}
+		static inline void SetWkDir(CStr& dir)
+		{
+			QDir tmp;
+			tmp.setCurrent(QString::fromLocal8Bit(_S(dir)));
+		}
+
+		static bool MkDir(CStr&  path);
+
+		// Eg: RenameImages("D:/DogImages/*.jpg", "F:/Images", "dog", ".jpg");
+		static int Rename(CStr& srcNames, CStr& dstDir, const char* nameCommon, const char* nameExt);
+
+		static void RmFile(CStr& fileW);
+		static void RmFolder(CStr& dir)
+		{
+			QDir tmp;
+			tmp.rmdir(QString::fromLocal8Bit(_S(dir)));
+		}
+		static void CleanFolder(CStr& dir, bool subFolder = false);
+
+		static int GetSubFolders(CStr& folder, vecS& subFolders);
+
+		static bool Copy(CStr &src, CStr &dst)
+		{
+			QFile f;
+			return f.copy(QString::fromLocal8Bit(_S(src)), QString::fromLocal8Bit(_S(dst)));
+		}
+		static bool Move(CStr &src, CStr &dst)
+		{
+			QFile f;
+			return f.copy(QString::fromLocal8Bit(_S(src)), QString::fromLocal8Bit(_S(dst)));
+		}
+		static bool Move2Dir(CStr &srcW, CStr dstDir);
+		static bool Copy2Dir(CStr &srcW, CStr dstDir);
+
+		static void RunProgram(CStr &fileName, CStr &parameters = "", bool waiteF = false, bool showW = true);
+	private:
+		static std::shared_ptr<QApplication> _app;
+#endif
+#endif
+	};
+}
+#endif
+
+#ifdef _YXL_STRING_
+namespace YXL
+{
+	inline std::string ReplaceStrings(const std::string& str, std::map<std::string, std::string>& replace_strs)
 	{
-		content = "";
-		std::ifstream fin(path);
-		std::string line;
-		while (getline(fin, line))
-			content += line + "\n";
-		fin.close();
+		std::string res = str;
+		size_t pos = 0;
+		for (auto& rep : replace_strs)
+			while (std::string::npos != (pos = res.find(rep.first)))
+				res.replace(pos, rep.first.length(), rep.second);
+		return res;
 	}
 
-	typedef bool (*CmdLineParserCallback)(const std::string& name, const std::string& val);
+	inline void SpiltStr(std::vector<std::string>& res, const std::string& src, const std::string& splitChars)
+	{
+		std::size_t prePos = src.find_first_not_of(splitChars);
+		std::size_t pos = src.find_first_of(splitChars, prePos);
+		while (std::string::npos != pos)
+		{
+			res.push_back(src.substr(prePos, pos - prePos));
+			prePos = src.find_first_not_of(splitChars, pos + 1);
+			pos = src.find_first_of(splitChars, prePos);
+		}
+		if (std::string::npos != prePos)
+			res.push_back(src.substr(prePos, src.length() - prePos));
+	}
+}
+#endif
+
+#ifdef _YXL_PARAM_PARSER_
+namespace YXL
+{
+	typedef bool(*CmdLineParserCallback)(const std::string& name, const std::string& val);
 	//argv: -name=val
 	/*
 	std::multimap<std::string, std::string> params;
 	bool ParserCallback(const std::string& name, const std::string& val)
 	{
-		params.insert(std::make_pair(name, val));
-		return true;
+	params.insert(std::make_pair(name, val));
+	return true;
 	}
 	CmdLineParser(argc, argv, ParserCallback);
 	*/
@@ -171,42 +535,49 @@ namespace YXL
 			callback(name, val);
 		}
 	}
-
-	enum FileInfo {
-		FileInfo_CreateTime,
-		FileInfo_LastAccessTime,
-		FileInfo_LastWriteTime,
-		FileInfo_FileSize
-	};
-	//return high-low
-#ifndef _NO_WINDOWS_
-	inline std::pair<DWORD, DWORD> GetFileInfo(const std::string& file_path, FileInfo fi)
-	{
-		WIN32_FIND_DATAA ffd;
-		HANDLE hFind = FindFirstFileA(file_path.c_str(), &ffd);
-		if (INVALID_HANDLE_VALUE == hFind)
-			return std::pair<DWORD, DWORD>(-1, -1);
-
-		std::pair<DWORD, DWORD> ret;
-		switch (fi)
-		{
-		case FileInfo_CreateTime:
-			ret = std::make_pair(ffd.ftCreationTime.dwHighDateTime, ffd.ftCreationTime.dwLowDateTime);
-			break;
-		case FileInfo_LastAccessTime:
-			ret = std::make_pair(ffd.ftLastAccessTime.dwHighDateTime, ffd.ftLastAccessTime.dwLowDateTime);
-			break;
-		case FileInfo_LastWriteTime:
-			ret = std::make_pair(ffd.ftLastWriteTime.dwHighDateTime, ffd.ftLastWriteTime.dwLowDateTime);
-			break;
-		case FileInfo_FileSize:
-			ret = std::make_pair(ffd.nFileSizeHigh, ffd.nFileSizeLow);
-			break;
-		}
-		return ret;
-	}
+}
 #endif
 
+#ifdef _YXL_PRINT_
+namespace YXL
+{
+	template<typename type> void PrintVector(const type* vec, const int vec_size)
+	{
+		std::cout << "[";
+		for (int i(0); i != vec_size; ++i)
+		{
+			if (i)
+				std::cout << ",";
+			std::cout << vec[i];
+		}
+		std::cout << "]" << std::endl;
+	}
+	template<typename type> void PrintVectorAsRow(const type* vec, const int vec_size)
+	{
+		for (int i(0); i != vec_size; ++i)
+			std::cout << i << ":\t" << vec[i] << "\n";
+	}
+
+	template<typename type> void PrintVector(std::vector<type>& v)
+	{
+		PrintVector(v.data(), v.size());
+	}
+	template<typename type> void PrintVectorAsRow(std::vector<type>& v)
+	{
+		PrintVectorAsRow(v.data(), v.size());
+	}
+
+	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m, const std::string& padding = "")
+	{
+		for (auto iter = m.begin(); iter != m.end(); ++iter)
+			YXL::yxlout << padding << iter->first << '\t' << iter->second << std::endl;
+	}
+}
+#endif
+
+#ifdef _YXL_OUT_STREAM_
+namespace YXL
+{
 	template<typename _Elem, typename _Traits>
 	class YXLOutStream
 	{
@@ -217,34 +588,14 @@ namespace YXL
 		typedef std::ostreambuf_iterator<_Elem, _Traits> _Iter;
 		typedef std::num_put<_Elem, _Iter> _Nput;
 
-#ifndef _NO_WINDOWS_
-		YXLOutStream()
-		{
-			InitializeCriticalSection(&cs);
-		}
-		~YXLOutStream()
-		{
-			DeleteCriticalSection(&cs);
-		}
-
 		void Lock()
 		{
-			EnterCriticalSection(&cs);
+			_mu.lock();
 		}
 		void Unlock()
 		{
-			LeaveCriticalSection(&cs);
+			_mu.unlock();
 		}
-#else
-		void Lock()
-		{
-			cs.lock();
-		}
-		void Unlock()
-		{
-			cs.unlock();
-		}
-#endif
 
 		template<typename type>
 		YXLOutStream& operator<<(type val)
@@ -298,80 +649,25 @@ namespace YXL
 		}
 
 	private:
-#ifndef _NO_WINDOWS_
-		CRITICAL_SECTION cs;
-#else
-		QMutex cs;
-#endif
-		std::string _log_file = "YXLOut.txt";
+		std::mutex _mu;
+		std::string _log_file = "";
 	};
 
-	extern YXLOutStream<char, std::char_traits<char> > yxlout;
+	typedef YXLOutStream<char, std::char_traits<char> > YXLOut;
 
-
-#ifndef _NO_WINDOWS_
-#define YXL_LOG_PREFIX GetCurrentThreadId()<<"["<<__FUNCTION__<<"] "
+#if defined(_WITH_WINDOWS_) || defined(__linux__)
+#define YXL_LOG_PREFIX YXL::GetCurrentThreadID()<<"["<<__FUNCTION__<<"] "
 #else
 #define YXL_LOG_PREFIX "["<<__FUNCTION__<<"] "
 #endif
+	extern YXLOut yxlout;
+}
+#endif
 
-
-	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m, const std::string& padding="")
-	{
-		for (auto iter = m.begin(); iter != m.end(); ++iter)
-		{
-			YXL::yxlout << padding<< iter->first << '\t' << iter->second << std::endl;
-		}
-	}
-
-	template<typename val> void PrintVectorAsRows(std::vector<val>& v)
-	{
-		for (int i(0); i != v.size(); ++i)
-		{
-			YXL::yxlout << i << ':\t' << v[i] << std::endl;
-		}
-	}
-
-	template<typename val> void PrintVector(std::vector<val>& v)
-	{
-		YXL::yxlout << "[";
-		for (int i(0); i != v.size(); ++i)
-		{
-			if (i)
-				YXL::yxlout << ",";
-			YXL::yxlout << v[i];
-		}
-		YXL::yxlout << "]" << std::endl;
-	}
-
-	template<typename VertexType, typename IndexType> void SavePlainObjFile(const std::string& save_path, const VertexType* vertices, const int vertex_cnt, const IndexType* face, const int face_cnt)
-	{
-		std::ofstream fout(save_path);
-		for (int i(0); i != vertex_cnt; ++i)
-		{
-			fout << "v " << vertices[0] << " " << vertices[1] << " " << vertices[2] << std::endl;
-			vertices += 3;
-		}
-		for (int i(0); i != face_cnt; ++i)
-		{
-			fout << "f ";
-			for (int j(0); j != 3; ++j)
-			{
-				fout << face[2-j]+1 << " ";
-			}
-			fout << std::endl;
-			face += 3;
-		}
-
-		fout.close();
-	}
-
-	namespace SHA1
-	{
-		std::string SHA1Digest(std::string str);
-	}
-
-	class UnionFind
+#ifdef _YXL_UNION_FIND_
+namespace YXL
+{
+	class LIB_YXL_HELPER UnionFind
 	{
 	public:
 		UnionFind(int cnt):_group_cnt(cnt), _id(std::vector<int>(cnt))
@@ -383,14 +679,32 @@ namespace YXL
 			}
 		}
 
-		int GroupCount() const;
-		bool IsConnected(const int a, const int b) const;
-		int Find(int a) const;
+		int GroupCount() const
+		{
+			return _group_cnt;
+		}
+		bool IsConnected(const int a, const int b) const
+		{
+			return Find(a) == Find(b);
+		}
+		int Find(int a) const
+		{
+			while (a != _id[a])
+				a = _id[a];
+			return a;
+		}
 		void Union(int a, int b);
 		void Update();
 
-		int GroupID(const int a) const;
-		const std::vector<int>* Group(const int group_id);
+		int GroupID(const int a) const
+		{
+			return (0 <= a&&a < _group_id.size()) ? _group_id[a] : -1;
+		}
+
+		const std::vector<int>* Group(const int group_id)
+		{
+			return (0 <= group_id && group_id < _group_cnt) ? &(_groups[group_id]) : nullptr;
+		}
 		
 	private:
 		int _group_cnt;
@@ -401,25 +715,490 @@ namespace YXL
 		std::map<int, std::vector<int> > _groups;
 	};
 }
+#endif
 
-
+#ifdef _YXL_TIME_
 namespace YXL
 {
-	cv::Mat ComputeMeshNormal(cv::Mat vertices, cv::Mat tris, bool is_reverse_normal);
-
-	cv::Mat FilterImage(cv::Mat img, cv::Mat kernel, cv::Mat mask=cv::Mat());
-}
-
-#ifdef HAS_CMFILE
-
-namespace YXL
-{
-	inline std::string ToAbsolutePath(const std::string& path)
+	inline std::string GetCurTime(const char* format_ymd_hms)
 	{
-		if (path.length() > 2 && path[1] == ':')
-			return path;
-		return CmFile::GetWkDir()+"/" + path;
+		auto tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		struct tm* ptm = localtime(&tt);
+		char date[60] = { 0 };
+		sprintf(date, format_ymd_hms,
+			(int)ptm->tm_year + 1900, (int)ptm->tm_mon + 1, (int)ptm->tm_mday,
+			(int)ptm->tm_hour, (int)ptm->tm_min, (int)ptm->tm_sec);
+		return std::string(date);
+	}
+
+	inline std::string GetCurTime()
+	{
+		return GetCurTime("%04d%02d%02d_%02d%02d%02d");
+	}
+
+	class LIB_YXL_HELPER Timer
+	{
+	public:
+		void Start(const std::string& stamp)
+		{
+			_str_t_start[stamp] = std::chrono::system_clock::now();
+		}
+		void Start(const int stamp)
+		{
+			_int_t_start[stamp] = std::chrono::system_clock::now();
+		}
+		double End(const std::string& stamp)
+		{
+			if (_str_t_start.find(stamp) == _str_t_start.end())
+				return 0.;
+			return TimeEscapeMS(_str_t_start[stamp], std::chrono::system_clock::now());
+		}
+		double EndAverage(const std::string& stamp)
+		{
+			auto ret = End(stamp);
+			return TimeEscapeAverage(ret, _str_acc[stamp]);
+			
+		}
+		double End(const int stamp)
+		{
+			if (_int_t_start.find(stamp) == _int_t_start.end())
+				return 0.;
+			return TimeEscapeMS(_int_t_start[stamp], std::chrono::system_clock::now());
+		}
+		double EndAverage(const int stamp)
+		{
+			auto ret = End(stamp);
+			return TimeEscapeAverage(ret, _int_acc[stamp]);
+		}
+
+		//time escape from last call
+		double TimeEscape()
+		{
+			auto tmp = std::chrono::system_clock::now();
+			auto ret = TimeEscapeMS(_last, tmp);
+			_last = tmp;
+			return ret;
+		}
+
+	private:
+		double TimeEscapeMS(const std::chrono::time_point<std::chrono::system_clock>& start,
+			const std::chrono::time_point<std::chrono::system_clock>& end)
+		{
+			using namespace std::chrono;
+			auto d = duration_cast<microseconds>(end - start);
+			return double(d.count()*1000.)*microseconds::period::num / microseconds::period::den;
+		}
+		double TimeEscapeAverage(const double cur_escape, std::pair<int, double>& history)
+		{
+			double ret = (history.first*history.second + cur_escape) / (history.first + 1);
+			++history.first;
+			history.second = ret;
+			return ret;
+		}
+
+	private:
+		std::map<std::string, std::chrono::time_point<std::chrono::system_clock> > _str_t_start;
+		std::map<int, std::chrono::time_point<std::chrono::system_clock> > _int_t_start;
+
+		std::map<std::string, std::pair<int, double> > _str_acc;
+		std::map<int, std::pair<int, double> > _int_acc;
+
+		std::chrono::time_point<std::chrono::system_clock> _last;
+	};
+
+	extern Timer g_timer;
+}
+#endif
+
+#ifdef _YXL_CONSOLE_
+namespace YXL
+{
+	namespace Console
+	{
+		inline void ClearLine(const int idx)
+		{
+			CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
+			HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+			if (!GetConsoleScreenBufferInfo(hStdout, &csbiInfo))
+				return;
+
+			COORD pos;
+			pos.X = 0;
+			pos.Y = idx;
+			DWORD written(0);
+			FillConsoleOutputCharacterA(hStdout, ' ', csbiInfo.dwSize.X, pos, &written);
+		}
+		inline void ClearCurrentLine()
+		{
+			CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
+			HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+			if (!GetConsoleScreenBufferInfo(hStdout, &csbiInfo))
+				return;
+			COORD pos = csbiInfo.dwCursorPosition;
+			pos.X = 0;
+			DWORD written(0);
+			FillConsoleOutputCharacterA(hStdout, ' ', csbiInfo.dwSize.X, pos, &written);
+		}
+		inline void ClearAll()
+		{
+			CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
+			HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+			if (!GetConsoleScreenBufferInfo(hStdout, &csbiInfo))
+				return;
+
+			COORD line;
+			line.X = 0;
+			line.Y = 0;
+			DWORD written(0);
+			FillConsoleOutputCharacterA(hStdout, ' ', csbiInfo.dwSize.X*csbiInfo.dwSize.Y, line, &written);
+		}
+		inline void RedirectTo(const int x, const int y)
+		{
+			CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
+			HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+			if (!GetConsoleScreenBufferInfo(hStdout, &csbiInfo))
+				return;
+
+			COORD pos;
+			pos.Y = x;
+			pos.X = y;
+			if (!SetConsoleCursorPosition(hStdout, pos))
+				return;
+		}
+
+		inline void RedirectToFirstLine(bool is_clear=true)
+		{
+			if(is_clear)
+				ClearAll();
+			RedirectTo(0, 0);
+		}
+		
+		inline int CurrentLine()
+		{
+			CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
+			HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+			if (!GetConsoleScreenBufferInfo(hStdout, &csbiInfo))
+				return -1;
+			return csbiInfo.dwCursorPosition.Y;
+		}
 	}
 }
+#endif
+
+#ifdef _YXL_TRANSFORM_
+namespace YXL
+{
+	template<typename type> void Cross(type* v, const type* v0, const type* v1)
+	{
+		v[0] = v0[1] * v1[2] - v0[2] * v1[1];
+		v[1] = v0[2] * v1[0] - v0[0] * v1[2];
+		v[2] = v0[0] * v1[1] - v0[1] * v1[0];
+	}
+	template<int len, typename type> type Dot(const type* v0, const type* v1)
+	{
+		type ret = 0;
+		for (int i(len); i--;)
+			ret += v0[i] * v1[i];
+		return ret;
+	}
+	template<int len, typename type> void Normalize(type* v, const type* v0)
+	{
+		type norm = static_cast<type>(1) / sqrt(Dot<len>(v0, v0));
+		for (int i(len); i--; )
+			v[i] = v0[i] * norm;
+	}
+
+	namespace Quat
+	{
+		template<typename type> void Rotate(type* out, const type* v, const type* quat)
+		{
+			float a[3], b[3];
+			Cross(a, quat, v);
+			Cross(b, quat, a);
+			out[0] = v[0] + static_cast<type>(2)*(a[0] * quat[3] + b[0]);
+			out[1] = v[1] + static_cast<type>(2)*(a[1] * quat[3] + b[1]);
+			out[2] = v[2] + static_cast<type>(2)*(a[2] * quat[3] + b[2]);
+		}
+		template<typename type> void ToQuaternion(type* out, const type* axis, const type angle_degree)
+		{
+			type angle = angle_degree*(3.1415926*0.5 / 180);
+			type c = cos(angle);
+			type s = sin(angle);
+
+			type norm = static_cast<type>(1) / Dot<3>(axis, axis);
+
+			out[0] = axis[0] * norm*s;
+			out[1] = axis[1] * norm*s;
+			out[2] = axis[2] * norm*s;
+			out[3] = c;
+		}
+	}
+
+	namespace Mat
+	{
+		template<typename type> void Perspective(type* ret, type aspect, type z_near, type z_far, type fov)
+		{
+			type tan_half_fov = tan(fov*0.5f / 180.0f*3.1415926f);
+
+			memset(ret, 0, sizeof(type) * 16);
+			ret[0] = 1.0f / (tan_half_fov*aspect);
+			ret[5] = 1.0f / tan_half_fov;
+			ret[10] = -(z_near + z_far) / (z_far - z_near);
+			ret[11] = -1.0f;
+			ret[14] = -2.0f*z_far*z_near / (z_far - z_near);
+
+			/*
+			{
+			1.0f / (tan_half_fov*aspect), 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f / tan_half_fov, 0.0f, 0.0f,
+			0.0f, 0.0f, -(z_near + z_far) / (z_far - z_near), -1.0f,
+			0.0f, 0.0f, -2.0f*z_far*z_near / (z_far - z_near), 0.0f
+			};
+			*/
+		}
+
+		template<typename type> void LookAt(type* ret, type* eye, type* at, type* up)
+		{
+			type f[] = { at[0] - eye[0], at[1] - eye[1], at[2] - eye[2] };
+			Normalize<3>(f, f);
+
+			type s[3];
+			Cross(s, f, up);
+			Normalize<3>(s, s);
+
+			type u[3];
+			Cross(u, s, f);
+
+			ret[0] = s[0];
+			ret[1] = s[1];
+			ret[2] = s[2];
+			ret[3] = 0;
+			ret[4] = u[0];
+			ret[5] = u[1];
+			ret[6] = u[2];
+			ret[7] = 0;
+			ret[8] = f[0];
+			ret[9] = f[1];
+			ret[10] = f[2];
+			ret[11] = 0;
+			ret[12] = -Dot<3>(s, eye);
+			ret[13] = -Dot<3>(u, eye);
+			ret[14] = Dot<3>(f, eye);
+			ret[15] = 1.0f;
+
+			/*float data[] = {
+			s[0], s[1], s[2], 0.0f,
+			u[0], u[1], u[2], 0.0f,
+			f[0], f[1], f[2], 0.0f,
+			-s.dot(eye), -u.dot(eye), f.dot(eye), 1.0f
+			};*/
+		}
+
+		template<typename type> void RotationX(type* ret, type angle)
+		{
+			memset(ret, 0, sizeof(type) * 16);
+			float theta = angle*3.1415926f / 180.0f;
+			ret[0] = 1.f;
+			ret[5] = cos(theta);
+			ret[6] = -sin(theta);
+			ret[9] = sin(theta);
+			ret[10] = cos(theta);
+			ret[15] = 1.f;
+			/*
+			{
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, cos(theta), -sin(theta), 0.0f,
+			0.0f, sin(theta), cos(theta), 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+			};
+			*/
+		}
+		template<typename type> void RotationY(type* ret, type angle)
+		{
+			memset(ret, 0, sizeof(type) * 16);
+			float theta = angle*3.1415926f / 180.0f;
+			ret[0] = cos(theta);
+			ret[2] = sin(theta);
+			ret[5] = 1.f;
+			ret[8] = -sin(theta);
+			ret[10] = cos(theta);
+			ret[15] = 1.f;
+			/*
+			{
+			cos(theta), 0.0f, sin(theta), 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			-sin(theta), 0.0f, cos(theta), 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+			};
+			*/
+		}
+		template<typename type> void RotationZ(type* ret, type angle)
+		{
+			memset(ret, 0, sizeof(type) * 16);
+			float theta = angle*3.1415926f / 180.0f;
+			ret[0] = cos(theta);
+			ret[1] = -sin(theta);
+			ret[4] = sin(theta);
+			ret[5] = cos(theta);
+			ret[10] = 1.f;
+			ret[15] = 1.f;
+			/*
+			{
+			cos(theta), -sin(theta), 0.0f, 0.0f,
+			sin(theta), cos(theta), 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+			};
+			*/
+		}
+		template<typename type> void Scale(type* ret, type* scale_xyz)
+		{
+			memset(ret, 0, sizeof(type) * 16);
+			ret[0] = scale_xyz[0];
+			ret[5] = scale_xyz[1];
+			ret[10] = scale_xyz[2];
+			ret[15] = 1.0f;
+		}
+		template<typename type> void Translate(type* ret, type* trans_xyz)
+		{
+			memset(ret, 0, sizeof(type) * 16);
+			ret[0] = 1.0f;
+			ret[5] = 1.0f;
+			ret[10] = 1.0f;
+			ret[12] = trans_xyz[0];
+			ret[13] = trans_xyz[1];
+			ret[14] = trans_xyz[2];
+			ret[15] = 1.0f;
+		}
+
+
+#ifdef _WITH_OPENCV_
+		inline cv::Mat Perspective(float aspect, float z_near, float z_far, float fov)
+		{
+			float proj_mat_data[16];
+			Perspective(proj_mat_data, aspect, z_near, z_far, fov);
+			return cv::Mat(4, 4, CV_32FC1, proj_mat_data).clone();
+		}
+
+		inline cv::Mat LookAt(cv::Vec3f eye, cv::Vec3f at, cv::Vec3f up)
+		{
+			float data[16];
+			LookAt(data, eye.val, at.val, up.val);
+			return cv::Mat(4, 4, CV_32FC1, data).clone();
+		}
+
+		inline cv::Mat Rotation(cv::Vec3f rot_xyz)
+		{
+			cv::Mat ret = cv::Mat::eye(4, 4, CV_32FC1);
+			float tmp[16];
+			if (rot_xyz[0] != 0.0)
+			{
+				RotationX(tmp, rot_xyz[0]);
+				ret *= cv::Mat(4, 4, CV_32FC1, tmp);
+			}
+			if (rot_xyz[1] != 0.0)
+			{
+				RotationY(tmp, rot_xyz[1]);
+				ret *= cv::Mat(4, 4, CV_32FC1, tmp);
+			}
+			if (rot_xyz[2] != 0.0)
+			{
+				RotationZ(tmp, rot_xyz[2]);
+				ret *= cv::Mat(4, 4, CV_32FC1, tmp);
+			}
+
+			return ret;
+		}
+
+		inline cv::Mat Scale(cv::Vec3f scale_xyz)
+		{
+			cv::Mat ret = cv::Mat::eye(4, 4, CV_32FC1);
+			Scale((float*)ret.data, scale_xyz.val);
+			return ret;
+		}
+
+		inline cv::Mat Translate(cv::Vec3f trans_xyz)
+		{
+			cv::Mat ret = cv::Mat::eye(4, 4, CV_32FC1);
+			Translate((float*)ret.data, trans_xyz.val);
+			return ret;
+		}
+#endif
+	}
+}
+#endif
+
+#ifdef _YXL_GRAPHIC_
+namespace YXL
+{
+	template<typename v_type, typename i_type> void ComputeNormal(v_type* normals, 
+		v_type* vertices, const int v_cnt, 
+		i_type* tris, const int tri_cnt, const bool is_reverse_normal)
+	{
+		memset(normals, 0, sizeof(v_type)*v_cnt * 3);
+		i_type idx[3];
+		int tmp;
+		v_type a[3], b[3], c[3], l2[3], face_normal[3];
+		for (int i(0); i!= tri_cnt; ++i)
+		{
+			tmp = i * 3;
+			idx[0] = tris[tmp + (is_reverse_normal ? 2 : 0)]*3;
+			idx[1] = tris[tmp + 1]*3;
+			idx[2] = tris[tmp + (is_reverse_normal ? 0 : 2)]*3;
+
+			a[0] = vertices[idx[0]] - vertices[idx[1]];
+			a[1] = vertices[idx[0] + 1] - vertices[idx[1] + 1];
+			a[2] = vertices[idx[0] + 2] - vertices[idx[1] + 2];
+			b[0] = vertices[idx[1]] - vertices[idx[2]];
+			b[1] = vertices[idx[1] + 1] - vertices[idx[2] + 1];
+			b[2] = vertices[idx[1] + 2] - vertices[idx[2] + 2];
+			c[0] = vertices[idx[2]] - vertices[idx[0]];
+			c[1] = vertices[idx[2] + 1] - vertices[idx[0] + 1];
+			c[2] = vertices[idx[2] + 2] - vertices[idx[0] + 2];
+			
+			l2[0] = Dot<3>(a, a);
+			l2[1] = Dot<3>(b, b);
+			l2[2] = Dot<3>(c, c);
+			Cross(face_normal, a, b);
+
+			a[0] = 1.f / (l2[0] * l2[2]);
+			a[1] = 1.f / (l2[0] * l2[1]);
+			a[2] = 1.f / (l2[1] * l2[2]);
+
+			tmp = idx[0];
+			normals[tmp] += face_normal[0] * a[0];
+			normals[tmp+1] += face_normal[1] * a[0];
+			normals[tmp+2] += face_normal[2] * a[0];
+			tmp = idx[1];
+			normals[tmp] += face_normal[0] * a[1];
+			normals[tmp + 1] += face_normal[1] * a[1];
+			normals[tmp + 2] += face_normal[2] * a[1];
+			tmp = idx[2];
+			normals[tmp] += face_normal[0] * a[2];
+			normals[tmp + 1] += face_normal[1] * a[2];
+			normals[tmp + 2] += face_normal[2] * a[2];
+		}
+		for (int i(v_cnt); i--;)
+			Normalize<3>(normals + i * 3, normals + i * 3);
+	}
+
+#ifdef _WITH_OPENCV_
+	inline cv::Mat ComputeNormal(cv::Mat vertices, cv::Mat tris, bool is_reverse_normal)
+	{
+		cv::Mat normals = cv::Mat(vertices.size(), vertices.type());
+		ComputeNormal((float*)normals.data, (float*)vertices.data, vertices.rows, (int*)tris.data, tris.rows, is_reverse_normal);
+		return normals;
+	}
+
+#endif
+}
+#endif
+
+#ifdef _YXL_IMG_PROC_
+namespace YXL
+{
+	cv::Mat LIB_YXL_HELPER FilterImage(cv::Mat img, cv::Mat kernel, cv::Mat mask = cv::Mat());
+}
+#endif
 
 #endif
