@@ -157,6 +157,45 @@ namespace YXL
 }
 #endif
 
+#ifdef _YXL_STRING_
+namespace YXL
+{
+	namespace Str
+	{
+		inline std::string Esacpe(const std::string& str, const std::string escape_ch="\t ")
+		{
+			auto beg = str.find_first_not_of(escape_ch);
+			auto end = str.find_last_not_of(escape_ch);
+			return str.substr(beg, end - beg+1);
+		}
+
+		inline std::string Replace(const std::string& str, std::map<std::string, std::string>& replace_strs)
+		{
+			std::string res = str;
+			size_t pos = 0;
+			for (auto& rep : replace_strs)
+				while (std::string::npos != (pos = res.find(rep.first)))
+					res.replace(pos, rep.first.length(), rep.second);
+			return res;
+		}
+
+		inline void Spilt(std::vector<std::string>& res, const std::string& src, const std::string& splitChars)
+		{
+			std::size_t prePos = src.find_first_not_of(splitChars);
+			std::size_t pos = src.find_first_of(splitChars, prePos);
+			while (std::string::npos != pos)
+			{
+				res.push_back(src.substr(prePos, pos - prePos));
+				prePos = src.find_first_not_of(splitChars, pos + 1);
+				pos = src.find_first_of(splitChars, prePos);
+			}
+			if (std::string::npos != prePos)
+				res.push_back(src.substr(prePos, src.length() - prePos));
+		}
+	}
+}
+#endif
+
 #ifdef _YXL_FILES_
 namespace YXL
 {
@@ -263,13 +302,23 @@ namespace YXL
 			return true;
 		}
 
-		static void LoadFileContent(const std::string& path, std::string& content)
+		static void LoadFileContent(const std::string& path, std::string& content, const std::string ignore="")
 		{
 			content = "";
 			std::ifstream fin(path);
 			std::string line;
-			while (getline(fin, line))
-				content += line + "\n";
+			if ("" == ignore)
+			{
+				while (getline(fin, line))
+					content += line + "\n";
+			}
+			else
+			{
+				while (getline(fin, line))
+					if (Str::Esacpe(line).substr(0, ignore.length()) != ignore)
+						content += line + "\n";
+			}
+			
 			fin.close();
 		}
 
@@ -481,35 +530,6 @@ namespace YXL
 }
 #endif
 
-#ifdef _YXL_STRING_
-namespace YXL
-{
-	inline std::string ReplaceStrings(const std::string& str, std::map<std::string, std::string>& replace_strs)
-	{
-		std::string res = str;
-		size_t pos = 0;
-		for (auto& rep : replace_strs)
-			while (std::string::npos != (pos = res.find(rep.first)))
-				res.replace(pos, rep.first.length(), rep.second);
-		return res;
-	}
-
-	inline void SpiltStr(std::vector<std::string>& res, const std::string& src, const std::string& splitChars)
-	{
-		std::size_t prePos = src.find_first_not_of(splitChars);
-		std::size_t pos = src.find_first_of(splitChars, prePos);
-		while (std::string::npos != pos)
-		{
-			res.push_back(src.substr(prePos, pos - prePos));
-			prePos = src.find_first_not_of(splitChars, pos + 1);
-			pos = src.find_first_of(splitChars, prePos);
-		}
-		if (std::string::npos != prePos)
-			res.push_back(src.substr(prePos, src.length() - prePos));
-	}
-}
-#endif
-
 #ifdef _YXL_PARAM_PARSER_
 namespace YXL
 {
@@ -548,36 +568,58 @@ namespace YXL
 #ifdef _YXL_PRINT_
 namespace YXL
 {
-	template<typename type> void PrintVector(const type* vec, const int vec_size)
+	template<typename type> void _print(type t, const int i)
 	{
+		std::cout << '\t' << t[i];
+	}
+	template<typename type> void _print2(type t, const int i)
+	{
+		if (i)
+			std::cout << ',';
+		std::cout <<t[i];
+	}
+
+	template<typename... type> void PrintVector(const int vec_len, const type*... vecs)
+	{
+		const int arg_cnt = sizeof...(vecs);
 		std::cout << "[";
-		for (int i(0); i != vec_size; ++i)
+		for (int i(0); i != vec_len; ++i)
 		{
 			if (i)
 				std::cout << ",";
-			std::cout << vec[i];
+			if(arg_cnt>1)
+				std::cout << "(";
+			int tmp[] = { (_print2(vecs, i), 0)... };
+			if(arg_cnt>1)
+				std::cout << ")";
 		}
 		std::cout << "]" << std::endl;
 	}
-	template<typename type> void PrintVectorAsRow(const type* vec, const int vec_size)
+	
+	template<typename... type> void PrintVectorAsRow(int vec_len, type*... vecs)
 	{
-		for (int i(0); i != vec_size; ++i)
-			std::cout << i << ":\t" << vec[i] << "\n";
+		for (int i(0); i != vec_len; ++i)
+		{
+			std::cout << i << ":";
+			int tmp[] = { (_print(vecs, i), 0)... };
+			std::cout << "\n";
+		}
+		
 	}
 
 	template<typename type> void PrintVector(std::vector<type>& v)
 	{
-		PrintVector(v.data(), v.size());
+		PrintVector(v.size(), v.data());
 	}
 	template<typename type> void PrintVectorAsRow(std::vector<type>& v)
 	{
-		PrintVectorAsRow(v.data(), v.size());
+		PrintVectorAsRow(v.size(), v.data());
 	}
 
 	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m, const std::string& padding = "")
 	{
 		for (auto iter = m.begin(); iter != m.end(); ++iter)
-			YXL::yxlout << padding << iter->first << '\t' << iter->second << std::endl;
+			YXL::yxlout << padding << iter->first << '\t' << iter->second << "\n";
 	}
 }
 #endif
@@ -757,7 +799,7 @@ namespace YXL
 #endif
 	}
 
-	template<typename type> double TimeEscapeMS(type start, type end)
+	template<typename type> double TimeElapsedMS(type start, type end)
 	{
 		using namespace std::chrono;
 		auto d = duration_cast<microseconds>(end - start);
@@ -769,47 +811,47 @@ namespace YXL
 	public:
 		void Start(const std::string& stamp)
 		{
-			_str_t_start[stamp] = std::chrono::system_clock::now();
+			_str_t_start[stamp] = std::chrono::high_resolution_clock::now();
 		}
 		void Start(const int stamp)
 		{
-			_int_t_start[stamp] = std::chrono::system_clock::now();
+			_int_t_start[stamp] = std::chrono::high_resolution_clock::now();
 		}
 		double End(const std::string& stamp)
 		{
 			if (_str_t_start.find(stamp) == _str_t_start.end())
 				return 0.;
-			return TimeEscapeMS(_str_t_start[stamp], std::chrono::system_clock::now());
+			return TimeElapsedMS(_str_t_start[stamp], std::chrono::high_resolution_clock::now());
 		}
 		double EndAverage(const std::string& stamp)
 		{
 			auto ret = End(stamp);
-			return TimeEscapeAverage(ret, _str_acc[stamp]);
+			return TimeElapsedAverage(ret, _str_acc[stamp]);
 			
 		}
 		double End(const int stamp)
 		{
 			if (_int_t_start.find(stamp) == _int_t_start.end())
 				return 0.;
-			return TimeEscapeMS(_int_t_start[stamp], std::chrono::system_clock::now());
+			return TimeElapsedMS(_int_t_start[stamp], std::chrono::high_resolution_clock::now());
 		}
 		double EndAverage(const int stamp)
 		{
 			auto ret = End(stamp);
-			return TimeEscapeAverage(ret, _int_acc[stamp]);
+			return TimeElapsedAverage(ret, _int_acc[stamp]);
 		}
 
 		//time escape from last call
 		double TimeEscape()
 		{
-			auto tmp = std::chrono::system_clock::now();
-			auto ret = TimeEscapeMS(_last, tmp);
+			auto tmp = std::chrono::high_resolution_clock::now();
+			auto ret = TimeElapsedMS(_last, tmp);
 			_last = tmp;
 			return ret;
 		}
 
 	private:
-		double TimeEscapeAverage(const double cur_escape, std::pair<int, double>& history)
+		double TimeElapsedAverage(const double cur_escape, std::pair<int, double>& history)
 		{
 			double ret = (history.first*history.second + cur_escape) / (history.first + 1);
 			++history.first;
@@ -818,13 +860,13 @@ namespace YXL
 		}
 
 	private:
-		std::map<std::string, std::chrono::time_point<std::chrono::system_clock> > _str_t_start;
-		std::map<int, std::chrono::time_point<std::chrono::system_clock> > _int_t_start;
+		std::map<std::string, std::chrono::time_point<std::chrono::high_resolution_clock> > _str_t_start;
+		std::map<int, std::chrono::time_point<std::chrono::high_resolution_clock> > _int_t_start;
 
 		std::map<std::string, std::pair<int, double> > _str_acc;
 		std::map<int, std::pair<int, double> > _int_acc;
 
-		std::chrono::time_point<std::chrono::system_clock> _last;
+		std::chrono::time_point<std::chrono::high_resolution_clock> _last;
 	};
 
 	extern Timer g_timer;
@@ -835,14 +877,14 @@ namespace YXL
 		FPSCounter(const int measure_frame=1)
 		{
 			_measure_frame = measure_frame;
-			_last = std::chrono::system_clock::now();
+			_last = std::chrono::high_resolution_clock::now();
 		}
 
 		//calculate current FPS
 		double CalcFPS()
 		{
-			auto cur = std::chrono::system_clock::now();
-			auto ms = TimeEscapeMS(_last, cur);
+			auto cur = std::chrono::high_resolution_clock::now();
+			auto ms = TimeElapsedMS(_last, cur);
 			_last = cur;
 			_pre_frame_time_ms.push_back(ms);
 			_total += ms;
@@ -868,7 +910,7 @@ namespace YXL
 		double _total = 0.;
 		double _fps = 0.;
 		std::deque<double> _pre_frame_time_ms;
-		std::chrono::time_point<std::chrono::system_clock> _last;
+		std::chrono::time_point<std::chrono::high_resolution_clock> _last;
 
 	};
 
@@ -888,19 +930,19 @@ namespace YXL
 
 		void Start()
 		{
-			_last = std::chrono::system_clock::now();
+			_last = std::chrono::high_resolution_clock::now();
 		}
 		void End()
 		{
-			auto ms = TimeEscapeMS(_last, std::chrono::system_clock::now());
+			auto ms = TimeElapsedMS(_last, std::chrono::high_resolution_clock::now());
 			if (ms < _ms_per_frame)
-				Sleep(_ms_per_frame - ms-1);
+				Sleep(_ms_per_frame - ms);
 		}
 
 	private:
 		double _fps = 30.;
 		double _ms_per_frame=1000./30.;
-		std::chrono::time_point<std::chrono::system_clock> _last;
+		std::chrono::time_point<std::chrono::high_resolution_clock> _last;
 	};
 }
 #endif
@@ -1113,16 +1155,16 @@ namespace YXL
 			memset(ret, 0, sizeof(type) * 16);
 			float theta = angle*3.1415926f / 180.0f;
 			ret[0] = cos(theta);
-			ret[2] = sin(theta);
+			ret[2] = -sin(theta);
 			ret[5] = 1.f;
-			ret[8] = -sin(theta);
+			ret[8] = sin(theta);
 			ret[10] = cos(theta);
 			ret[15] = 1.f;
 			/*
 			{
-			cos(theta), 0.0f, sin(theta), 0.0f,
+			cos(theta), 0.0f, -sin(theta), 0.0f,
 			0.0f, 1.0f, 0.0f, 0.0f,
-			-sin(theta), 0.0f, cos(theta), 0.0f,
+			sin(theta), 0.0f, cos(theta), 0.0f,
 			0.0f, 0.0f, 0.0f, 1.0f
 			};
 			*/
@@ -1308,16 +1350,17 @@ namespace YXL
 		virtual void Frame(const int frame_id) = 0;
 		virtual void KeyCallback(int key, int scancode, int action, int mods) 
 		{
-			/*if (action == GLFW_PRESS)
+			if (action == GLFW_PRESS)
 			{
 				switch (key)
 				{
-				case GLFW_KEY_SPACE:
+				case GLFW_KEY_ESCAPE:
+					glfwSetWindowShouldClose(_wnd, GLFW_TRUE);
 					break;
 				default:
 					break;
 				}
-			}*/
+			}
 		}
 
 	protected:

@@ -323,9 +323,8 @@ namespace YXL
 				{
 					std::string str;
 					while (std::getline(fin, str))
-					{
-						str_in += str + "\n";
-					}
+						if(Esacpe(str).substr(0, 2) != "//")
+							str_in += str + "\n";
 				}
 				else
 				{
@@ -335,7 +334,7 @@ namespace YXL
 				fin.close();
 				if (_doc.Parse(str_in.c_str()).HasParseError())
 				{
-					std::cout << "the project file has been corrupted: " << path << std::endl;
+					std::cout << "the file has been corrupted: " << path << std::endl;
 					return false;
 				}
 				return true;
@@ -513,6 +512,14 @@ namespace YXL
 			rapidjson::Document& GetDoc()
 			{
 				return _doc;
+			}
+
+		private:
+			std::string Esacpe(const std::string& str, const std::string escape_ch = "\t ")
+			{
+				auto beg = str.find_first_not_of(escape_ch);
+				auto end = str.find_last_not_of(escape_ch);
+				return str.substr(beg, end - beg + 1);
 			}
 
 		private:
