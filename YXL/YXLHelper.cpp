@@ -998,6 +998,9 @@ namespace YXL
 			glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 		_wnd = glfwCreateWindow(1280, 720, "", NULL, NULL);
 		glfwMakeContextCurrent(_wnd);
+		
+		auto mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+		glfwSetWindowPos(_wnd, (mode->width-wnd_w)/2, (mode->height-wnd_h)/2);
 
 		glfwSwapInterval(0);
 
