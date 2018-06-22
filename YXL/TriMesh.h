@@ -153,13 +153,18 @@ namespace YXL
 		}
 		std::shared_ptr<TriMesh> GetSubObject(int idx);
 
+		void Scale(float scale)
+		{
+			_render_vertices *= scale;
+		}
+		void Translate(cv::Vec3f trans);
+		void Rotate(cv::Mat rot);
 
 		static std::shared_ptr<TriSharedInfo> GetSharedInfo(const std::string& id);
 		std::shared_ptr<TriSharedInfo> GetSharedInfo()
 		{
 			return GetSharedInfo(_identifier);
 		}
-		
 
 		cv::Vec3f bbox[2];
 

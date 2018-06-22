@@ -1073,6 +1073,23 @@ namespace YXL
 
 	namespace Mat
 	{
+		template<typename type> void RotationPoint(type* pt_ret, type* pt, type* rot)
+		{
+			if (pt_ret == pt)
+			{
+				type x = pt[0], y = pt[1], z = pt[2];
+				pt_ret[0] = x*rot[0] + y*rot[4] + z*rot[8];
+				pt_ret[1] = x*rot[1] + y*rot[5] + z*rot[9];
+				pt_ret[2] = x*rot[2] + y*rot[6] + z*rot[10];
+			}
+			else
+			{
+				pt_ret[0] = pt[0]*rot[0] + pt[1]*rot[4] + pt[2]*rot[8];
+				pt_ret[1] = pt[0]*rot[1] + pt[1]*rot[5] + pt[2]*rot[9];
+				pt_ret[2] = pt[0]*rot[2] + pt[1]*rot[6] + pt[2]*rot[10];
+			}
+		}
+
 		template<typename type> void Perspective(type* ret, type aspect, type z_near, type z_far, type fov)
 		{
 			type tan_half_fov = tan(fov*0.5f / 180.0f*3.1415926f);

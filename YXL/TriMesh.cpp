@@ -96,23 +96,22 @@ void YXL::TriSharedInfo::SaveAsObj(CStr & path, cv::Mat render_vertices)
 			fout << "usemtl " << g.mtl_name << "\n";
 		}
 		fout << "s 1" << "\n";
-		for (int i(iter->second.face_beg); i != iter->second.face_end; ++i)
+		CV_Assert(_org_faces.isContinuous() && _org_face_uvs.isContinuous());
+		auto face = reinterpret_cast<int*>(_org_faces.data);
+		auto face_uv = reinterpret_cast<int*>(_org_face_uvs.data);
+		const int ch = _org_faces.channels();
+		for (int i(iter->second.face_beg), idx; i != iter->second.face_end; ++i)
 		{
-			cv::Vec4i face = _org_faces.at<cv::Vec4i>(i);
-			cv::Vec4i face_uv = _org_face_uvs.at<cv::Vec4i>(i);
-			face += cv::Vec4i::all(1);
-			face_uv += cv::Vec4i::all(1);
+			idx = i*ch;
 			fout << "f ";
-			for (int i(0); i != 4; ++i)
+			for (int j(0); j != ch; ++j)
 			{
-				if (face[i] <= 0)
-				{
+				if (face[idx+j] < 0)
 					break;
-				}
-				fout << face[i] << "/" << face_uv[i] << " ";
+				fout << face[idx+j]+1 << "/" << face_uv[idx+j]+1 << " ";
 			}
 			fout << "\n";
-		}
+		}		
 		fout << "\n";
 	}
 
@@ -160,15 +159,14 @@ void YXL::TriSharedInfo::FindUnusedPoints(cv::Mat vertices)
 	YXL::yxlout << YXL_LOG_PREFIX << "finding unused points..." << std::endl;
 	YXL::yxlout.Unlock();
 	std::vector<int> cnt(vertices.rows);
-	for (int i(0); i != _org_faces.rows; ++i)
-	{
-		cv::Vec4i face = _org_faces.at<cv::Vec4i>(i);
-		++cnt[face[0]];
-		++cnt[face[1]];
-		++cnt[face[2]];
-		if (face[3] >= 0)
-			++cnt[face[3]];
-	}
+	const int ch = _org_faces.channels();
+	CV_Assert((3==ch || 4==ch) && "unrecognized face type");
+	CV_Assert(_org_faces.isContinuous());
+	auto face = reinterpret_cast<int*>(_org_faces.data);
+	for (int i(_org_faces.rows*ch); i--; )
+		if(face[i]>=0)
+			++cnt[face[i]];
+	
 	_unused_points.clear();
 	int idx(0);
 	for (int i(0); i != vertices.rows; ++i)
@@ -205,36 +203,42 @@ void YXL::TriSharedInfo::FacesToTriangles()
 	_tri_uvs.reserve(_org_face_uvs.rows);
 	_tris = cv::Mat(0, 1, CV_32SC3);
 	_tris.reserve(_org_faces.rows);
+
+	CV_Assert(_org_faces.isContinuous() && _org_face_uvs.isContinuous());
+	auto face = reinterpret_cast<int*>(_org_faces.data);
+	auto face_uv = reinterpret_cast<int*>(_org_face_uvs.data);
+	const int ch = _org_faces.channels();
+
 	for (auto iter = _org_groups.begin(); iter != _org_groups.end(); ++iter)
 	{
 		TriSharedInfo::Group g = iter->second;
 		g.face_beg = _tris.rows;
-		for (int i(iter->second.face_beg); i != iter->second.face_end; ++i)
+		cv::Vec3i tri;
+		cv::Vec3i tri_uv;
+		for (int i(iter->second.face_beg), idx; i != iter->second.face_end; ++i)
 		{
-			cv::Vec4i face = _org_faces.at<cv::Vec4i>(i);
-			cv::Vec4i face_uv = _org_face_uvs.at<cv::Vec4i>(i);
-			cv::Vec3i tri;
-			cv::Vec3i tri_uv;
-			for (int i(0); i != 3; ++i)
+			idx = i*ch;
+			
+			for (int j(0); j != 3; ++j)
 			{
-				tri[i] = _idx_map[face[i]];
-				tri_uv[i] = face_uv[i];
-				if (tri[i] < 0 || tri_uv[i] < 0)
+				tri[j] = _idx_map[face[idx+j]];
+				tri_uv[j] = face_uv[idx+j];
+				if (tri[j] < 0 || tri_uv[j] < 0)
 				{
 					YXL::yxlout.Lock();
-					YXL::yxlout << YXL_LOG_PREFIX << "error: vertex index invalid" << cv::format("tri:%d_tri_uv:%d", tri[i], tri_uv[i]) << std::endl;
+					YXL::yxlout << YXL_LOG_PREFIX << "error: vertex index invalid" << cv::format("tri:%d_tri_uv:%d", tri[j], tri_uv[j]) << std::endl;
 					YXL::yxlout.Unlock();
 					exit(0);
 				}
 			}
 			_tris.push_back(tri);
 			_tri_uvs.push_back(tri_uv);
-			if (face[3] >= 0)
+			if (ch>3 && face[idx+3] >= 0)
 			{
 				tri[1] = tri[2];
-				tri[2] = _idx_map[face[3]];
+				tri[2] = _idx_map[face[idx+3]];
 				tri_uv[1] = tri_uv[2];
-				tri_uv[2] = face_uv[3];
+				tri_uv[2] = face_uv[idx+3];
 
 				_tris.push_back(tri);
 				_tri_uvs.push_back(tri_uv);
@@ -278,11 +282,9 @@ void YXL::TriSharedInfo::GenRenderUVsTriangles()
 void YXL::TriSharedInfo::TriSharedInfo::GroupUpTrianglesByConnectivity()
 {
 	int remain_vertex_cnt(0);
-	for (auto iter = _idx_map.begin(); iter != _idx_map.end(); ++iter)
-	{
-		if (*iter>=0)
+	for (auto idx:_idx_map)
+		if (idx>=0)
 			++remain_vertex_cnt;
-	}
 
 	YXL::UnionFind uf(remain_vertex_cnt);
 	for (int i(0); i != _tris.rows; ++i)
@@ -295,7 +297,7 @@ void YXL::TriSharedInfo::TriSharedInfo::GroupUpTrianglesByConnectivity()
 	uf.Update();
 
 	const int obj_cnt = uf.GroupCount();
-
+	
 	_obj_tris.resize(obj_cnt);
 	_render_obj_mtls.resize(obj_cnt);
 	for (auto iter = _groups.begin(); iter != _groups.end(); ++iter)
@@ -348,7 +350,6 @@ void YXL::TriMesh::LoadFromObjFile(CStr & path)
 
 void YXL::TriMesh::Load(cv::Mat vertices, cv::Mat uvs, cv::Mat faces, cv::Mat face_uvs)
 {
-	
 	std::map<std::string, TriSharedInfo::TriSharedInfo::Group> groups;
 	auto& g = groups["default"];
 	g.face_beg = 0;
@@ -369,9 +370,7 @@ void YXL::TriMesh::Load(cv::Mat vertices, cv::Mat uvs, cv::Mat faces, cv::Mat fa
 	if (uvs.empty())
 		uvs = cv::Mat(vertices.size(), CV_32FC2, cv::Scalar::all(0));
 	if (face_uvs.empty() && vertices.rows == uvs.rows)
-	{
 		face_uvs = faces.clone();
-	}
 	CV_Assert(faces.rows == face_uvs.rows);
 
 	GenIdentifier(vertices, uvs, faces, face_uvs, groups, mtls);
@@ -380,9 +379,7 @@ void YXL::TriMesh::Load(cv::Mat vertices, cv::Mat uvs, cv::Mat faces, cv::Mat fa
 	YXL::yxlout.Lock();
 	YXL::yxlout << YXL_LOG_PREFIX << "groups: ";
 	for (auto iter = _info->_org_groups.begin(); iter != _info->_org_groups.end(); ++iter)
-	{
 		YXL::yxlout << cv::format("(%s_%s_%d-%d)", iter->second.name.c_str(), iter->second.mtl_name.c_str(), iter->second.face_beg, iter->second.face_end);
-	}
 	YXL::yxlout << std::endl;
 	YXL::yxlout.Unlock();
 }
@@ -421,28 +418,64 @@ std::shared_ptr<YXL::TriMesh> YXL::TriMesh::GetSubObject(int idx)
 	auto tris = _info->_tris;
 
 	std::map<int, int> idx_map;
-	cv::Mat tris_new(0, 1, CV_32SC4);
+	cv::Mat tris_new(0, 1, CV_32SC3);
+	cv::Mat tri_uvs_new(0, 1, CV_32SC3);
 	for (auto tmp : tri_list)
 	{
 		auto tri = tris.at<cv::Vec3i>(tmp);
-		cv::Vec4i tri2;
+		cv::Vec3i tri2;
 		for (int i(0); i != 3; ++i)
 		{
 			if (idx_map.find(tri[i]) == idx_map.end())
 				idx_map[tri[i]] = idx_map.size();
 			tri2[i] = idx_map[tri[i]];
 		}
-		tri2[3] = -1;
 		tris_new.push_back(tri2);
+		tri_uvs_new.push_back(tri2);
 	}
 
 	cv::Mat vertices_new(idx_map.size(), 1, CV_32FC3);
+	cv::Mat uvs_new(idx_map.size(), 1, CV_32FC2);
 	for (auto pair : idx_map)
+	{
 		vertices_new.at<cv::Vec3f>(pair.second) = _render_vertices.at<cv::Vec3f>(_info->_vertex_map_to_render_idx[pair.first][0]);
+		uvs_new.at<cv::Vec2f>(pair.second) = _info->_render_uvs.at<cv::Vec2f>(_info->_vertex_map_to_render_idx[pair.first][0]);
+	}
+
+	std::map<std::string, TriSharedInfo::Mtl> mtls;
+	auto mtl = _info->_mtls[_info->_render_obj_mtls[idx]];
+	mtls[mtl.name] = mtl;
+
+	std::map<std::string, TriSharedInfo::Group> groups;
+	std::string g_name = cv::format("sub_%d", idx);
+	auto& g = groups[g_name];
+	g.name = g_name;
+	g.face_beg = 0;
+	g.face_end = tris_new.rows;
+	g.mtl_name = mtl.name;
+	g.vt_beg = 0;
+	g.vt_end = uvs_new.rows;
+	g.v_beg = 0;
+	g.v_end = vertices_new.rows;
 
 	std::shared_ptr<YXL::TriMesh> ret(new YXL::TriMesh);
-	ret->Load(vertices_new, cv::Mat(), tris_new, cv::Mat());
+	ret->Load(vertices_new, uvs_new, tris_new, tri_uvs_new, groups, mtls);
 	return ret;
+}
+
+void YXL::TriMesh::Translate(cv::Vec3f trans)
+{
+	for (int i(0); i != _render_vertices.rows; ++i)
+		_render_vertices.at<cv::Vec3f>(i)+=trans;
+}
+
+void YXL::TriMesh::Rotate(cv::Mat rot)
+{
+	for (int i(0); i != _render_vertices.rows; ++i)
+	{
+		auto& pt = _render_vertices.at<cv::Vec3f>(i);
+		YXL::Mat::RotationPoint(pt.val, pt.val, (float*)rot.data);
+	}
 }
 
 std::shared_ptr<YXL::TriSharedInfo> YXL::TriMesh::GetSharedInfo(const std::string& id)
@@ -499,15 +532,14 @@ void YXL::TriMesh::LoadFromObjFile(CStr & path, cv::Mat& vertices, cv::Mat& uvs,
 		}
 		else if ("g" == str)
 		{
-			string name;
-			ss >> name;
+			string name= line.substr(2, line.length()-2);
 			if ("unnamed" != g.name && g.face_beg<faces.rows)
 			{
 				g.face_end = faces.rows;
 				g.v_end = vertices.rows;
 				g.vt_end = uvs.rows;
 
-				if (max_vt_idx + 1 != uvs.rows)
+				if (max_vt_idx + 1 > uvs.rows)
 				{
 					YXL::yxlout.Lock();
 					YXL::yxlout << YXL_LOG_PREFIX << "error: uv index wrong..." << std::endl;
@@ -691,16 +723,26 @@ void YXL::TriMesh::GenIdentifier(cv::Mat vertices, cv::Mat uvs, cv::Mat faces, c
 	std::string id = cv::format("%d_%d", vertices.rows, faces.rows);
 
 	std::map<std::string, int> m;
-	for (int i(0); i != faces.rows; ++i)
+	if (3 == faces.channels())
 	{
-		cv::Vec4i face = faces.at<cv::Vec4i>(i);
-		m[cv::format("%d_%d_%d_%d", face[0], face[1], face[2], face[3])] = 0;
+		for (int i(0); i != faces.rows; ++i)
+		{
+			cv::Vec3i face = faces.at<cv::Vec3i>(i);
+			m[cv::format("%d_%d_%d", face[0], face[1], face[2])] = 0;
+		}
 	}
+	else if (4 == faces.channels())
+	{
+		for (int i(0); i != faces.rows; ++i)
+		{
+			cv::Vec4i face = faces.at<cv::Vec4i>(i);
+			m[cv::format("%d_%d_%d_%d", face[0], face[1], face[2], face[3])] = 0;
+		}
+	}
+	
 	std::stringstream ss;
 	for (auto iter = m.begin(); iter != m.end(); ++iter)
-	{
 		ss << iter->first;
-	}
 
 	/*for (auto iter = groups.begin(); iter != groups.end(); ++iter)
 	{

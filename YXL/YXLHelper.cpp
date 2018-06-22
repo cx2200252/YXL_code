@@ -563,9 +563,7 @@ namespace YXL
 		if (a == b)
 			return;
 		if (_group_size[a] < _group_size[b])
-		{
 			std::swap(a, b);
-		}
 		_id[b] = a;
 		_group_size[a] += _group_size[b];
 		_group_size.erase(_group_size.find(b));
@@ -975,8 +973,6 @@ namespace YXL
 			return cv::Mat();
 	}
 }
-
-
 #endif
 
 #ifdef _YXL_GLFW_
