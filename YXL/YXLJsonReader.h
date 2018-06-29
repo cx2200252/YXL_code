@@ -1,8 +1,6 @@
 #ifndef _YXL_JSON_READER_H_
 #define _YXL_JSON_READER_H_
 
-#undef min
-#undef max
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include <fstream>
@@ -227,11 +225,13 @@ namespace YXL
 		struct ValueGetter<float> {
 			static float Get(const rapidjson::Value & val) 
 			{
-				return val.GetFloat();
+				if (val.IsFloat())
+					return val.GetFloat();
+				return val.GetInt();
 			}
 			static bool IsType(const rapidjson::Value & val)
 			{
-				return val.IsFloat();
+				return val.IsFloat() || val.IsInt();
 			}
 		};
 
@@ -419,7 +419,7 @@ namespace YXL
 			}
 			template<typename type> bool SetMember(const std::string& name, const type* vals, const int cnt)
 			{
-				return AddMember(name, vals, cnt, _doc);
+				return SetMember(name, vals, cnt, _doc);
 			}
 			template<typename type> bool SetMember(const std::string& name, std::vector<type>& vals, rapidjson::Value& parent)
 			{

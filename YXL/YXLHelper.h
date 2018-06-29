@@ -9,6 +9,7 @@
 #define _YXL_PRINT_
 #define _YXL_OUT_STREAM_
 #define _YXL_UNION_FIND_
+#define _YXL_KD_TREE_
 #define _YXL_TIME_
 #define _YXL_CONSOLE_
 #define _YXL_TRANSFORM_
@@ -25,6 +26,8 @@
 #include <chrono>
 #include <mutex>
 #include <queue>
+#include <algorithm>
+#include <stack>
 
 #pragma warning(disable:4819)
 #ifdef YXL_HELPER_DYNAMIC
@@ -124,10 +127,13 @@ typedef std::vector<cv::Mat> vecM;
 #endif
 
 #ifdef _WIN32
+#ifndef _CRT_SECURE_NO_DEPRECATE
 #define _CRT_SECURE_NO_DEPRECATE
+#endif
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #endif
-
+#endif
 
 #ifdef _YXL_OTHER_
 namespace YXL
@@ -766,6 +772,105 @@ namespace YXL
 }
 #endif
 
+#ifdef _YXL_KD_TREE_
+namespace YXL
+{
+	template<typename type, int dim=3>
+	class KDTree
+	{
+		struct Element
+		{
+			type val[dim];
+		};
+		struct Node
+		{
+			~Node()
+			{
+				if (left)
+					delete left;
+				if (right)
+					delete right;
+			}
+			Element val;
+			int split_dim;
+			Node *left = nullptr;
+			Node *right = nullptr;
+		};
+	public:
+		~KDTree()
+		{
+			if (_root)
+				delete _root;
+		}
+
+		void Bulid(const type* data, const int ele_cnt)
+		{
+			std::vector<Element> ele(ele_cnt);
+			memcpy(&ele[0], data, ele_cnt*sizeof(Element));
+
+			_root = Build(&ele[0], ele_cnt, 0);
+		}
+
+		void FindNearest(type* ret, const type* ele)
+		{
+			Element _ele, _ret;
+			memcpy(_ele.val, ele, sizeof(Element));
+			double min_dist = (std::numeric_limits<double>::max)();
+			FindNearest(_ret, _ele, _root, min_dist);
+			memcpy(ret, _ret.val, sizeof(Element));
+		}
+
+	private:
+		Node* Build(Element* _data, const int ele_cnt, const int split_dim)
+		{
+			std::sort(_data, _data + ele_cnt, 
+				[split_dim](const Element& a, const Element& b) {return a.val[split_dim] < b.val[split_dim]; });
+
+			int mid = ele_cnt / 2;
+			while (mid + 2 < ele_cnt && _data[mid].val[split_dim] == _data[mid + 1].val[split_dim])
+				++mid;
+
+			Node* node = new Node;
+			node->val = _data[mid];
+			node->split_dim = split_dim;
+
+			int next_split_dim = (split_dim + 1) % dim;
+			if (mid > 0)
+				node->left = Build(_data, mid, next_split_dim);
+			if(mid<ele_cnt-1)
+				node->right = Build(_data+mid+1, ele_cnt-mid-1, next_split_dim);
+			return node;
+		}
+		void FindNearest(Element& ret, const Element& ele, Node* node, double& min_dist)
+		{
+			if (node == nullptr)
+				return;
+			Element diff;
+			for (int i(dim); i--;)
+				diff.val[i] = ele.val[i] - node->val.val[i];
+			double cur_dist = YXL::Dot<dim>(diff.val, diff.val);
+			if (cur_dist < min_dist)
+			{
+				min_dist = cur_dist;
+				ret = node->val;
+			}
+			FindNearest(ret, ele,
+				(ele.val[node->split_dim] <= node->val.val[node->split_dim]) ? node->left : node->right,
+				min_dist);
+			double range = ele.val[node->split_dim] - node->val.val[node->split_dim];
+			if (abs(range) > min_dist)
+				return;
+			FindNearest(ret, ele,
+				(range < 0 ? node->right : node->left),
+				min_dist);
+		}
+
+	private:
+		Node* _root=nullptr;
+	};
+}
+#endif
+
 #ifdef _YXL_TIME_
 #ifdef __linux__
 #include <system.h>
@@ -809,6 +914,15 @@ namespace YXL
 	class LIB_YXL_HELPER Timer
 	{
 	public:
+		void Reset()
+		{
+			_str_t_start.clear();
+			_int_t_start.clear();
+			_str_acc.clear();
+			_int_acc.clear();
+			_last = std::chrono::high_resolution_clock::now();
+		}
+
 		void Start(const std::string& stamp)
 		{
 			_str_t_start[stamp] = std::chrono::high_resolution_clock::now();
@@ -1361,9 +1475,15 @@ namespace YXL
 	class LIB_YXL_HELPER GLFWBase
 	{
 	public:
+		virtual ~GLFWBase()
+		{
+			glfwDestroyWindow(_wnd);
+		}
 		virtual bool Init(const int wnd_w=1280, const int wnd_h=720, const bool hidden=false);
 		virtual void Run();
 		virtual void CleanUp() {}
+		virtual void BeforeFrame(const int frame_id) {}
+		virtual void AfterFrame(const int frame_id) {}
 		virtual void Frame(const int frame_id) = 0;
 		virtual void KeyCallback(int key, int scancode, int action, int mods) 
 		{
@@ -1378,6 +1498,19 @@ namespace YXL
 					break;
 				}
 			}
+		}
+		virtual void MouseButtonCallback(int button, int action, int mods)
+		{
+			//if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+			//	//do something
+		}
+		virtual void ScrollCallback(double xoffset, double yoffset)
+		{
+
+		}
+		virtual void SetWindowTitle(const std::string title)
+		{
+			glfwSetWindowTitle(_wnd, title.c_str());
 		}
 
 	protected:

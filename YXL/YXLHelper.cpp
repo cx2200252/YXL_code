@@ -172,8 +172,10 @@ namespace YXL
 		vecS names;
 		std::string inDir;
 		int fNum = GetNames(srcNames, names, inDir);
+		char buff[500];
 		for (int i = 0; i < fNum; i++) {
-			std::string dstName = cv::format("%s\\%.4d%s.%s", _S(dstDir), i, nameCommon, nameExt);
+			sprintf(buff, "%s\\%.4d%s.%s", _S(dstDir), i, nameCommon, nameExt);
+			std::string dstName = buff;
 			std::string srcName = inDir + names[i];
 			::CopyFileA(srcName.c_str(), dstName.c_str(), FALSE);
 		}
@@ -207,7 +209,11 @@ namespace YXL
 	{
 		CleanFolder(dir);
 		if (FolderExist(dir))
-			RunProgram("Cmd.exe", cv::format("/c rmdir /s /q \"%s\"", _S(dir)), true, false);
+		{
+			char buff[500];
+			sprintf(buff, "/c rmdir /s /q \"%s\"", _S(dir));
+			RunProgram("Cmd.exe", buff, true, false);
+		}
 	}
 
 	int File::GetSubFolders(CStr & folder, vecS & subFolders)
@@ -979,17 +985,29 @@ namespace YXL
 namespace YXL
 {
 	static std::map<GLFWwindow*, GLFWBase*> s_glfw_map;
-	void GLFWKeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
+	void _GLFWKeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
 	{
 		if (s_glfw_map.find(window) != s_glfw_map.end())
 			s_glfw_map[window]->KeyCallback(key, scancode, action, mods);
+	}
+	void _GLFWMouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+	{
+		if (s_glfw_map.find(window) != s_glfw_map.end())
+			s_glfw_map[window]->MouseButtonCallback(button, action, mods);
+	}
+	void _GLFWScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+	{
+		if (s_glfw_map.find(window) != s_glfw_map.end())
+			s_glfw_map[window]->ScrollCallback(xoffset, yoffset);
 	}
 
 	bool GLFWBase::Init(const int wnd_w, const int wnd_h, const bool hidden)
 	{
 		if (wnd_w <= 0 || wnd_h <= 0)
 			return false;
-		glfwInit();
+		static bool inited = false;
+		if(inited==false)
+			glfwInit();
 		if(hidden)
 			glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 		_wnd = glfwCreateWindow(1280, 720, "", NULL, NULL);
@@ -1000,22 +1018,32 @@ namespace YXL
 
 		glfwSwapInterval(0);
 
-		GLenum err = glewInit();
-		if (GLEW_OK != err)
-			return false;
+		if (inited == false)
+		{
+			GLenum err = glewInit();
+			if (GLEW_OK != err)
+				return false;
+		}
 
 		s_glfw_map[_wnd] = this;
-		glfwSetKeyCallback(_wnd, YXL::GLFWKeyCallback);
+		glfwSetKeyCallback(_wnd, YXL::_GLFWKeyCallback);
+		glfwSetMouseButtonCallback(_wnd, YXL::_GLFWMouseButtonCallback);
+		glfwSetScrollCallback(_wnd, YXL::_GLFWScrollCallback);
 		return true;
+
+		inited = true;
 	}
 	void GLFWBase::Run()
 	{
 		while (!glfwWindowShouldClose(_wnd))
 		{
 			glfwMakeContextCurrent(_wnd);
-			Frame(_frame_id++);
+			BeforeFrame(_frame_id);
+			Frame(_frame_id);
+			AfterFrame(_frame_id);
 			glfwSwapBuffers(_wnd);
 			glfwPollEvents();
+			_frame_id++;
 		}
 		CleanUp();
 	}

@@ -6,6 +6,7 @@
 #include <math.h>
 #include <float.h> //FLT_EPSILON, DBL_EPSILON
 #include <algorithm>
+#include <map>
 using namespace std;
 
 #define loopi(start_l,end_l) for ( int i=start_l;i<end_l;++i )
@@ -343,6 +344,24 @@ namespace MeshSimplify
 		}
 		return false;
 	}
+	int ComputeCurrentVertCount()
+	{
+		std::map<int, int> m;
+		for (auto tri : triangles)
+			if(tri.deleted==false)
+			{
+				++m[tri.v[0]];
+				++m[tri.v[1]];
+				++m[tri.v[2]];
+			}
+		return m.size();
+	}
+
+	inline bool IsOK(const int target_tri_count, const int target_vert_count, const int tri_count, const int vert_count)
+	{
+		return (target_tri_count > 0 && tri_count <= target_tri_count) || (target_vert_count > 0 && vert_count <= target_vert_count);
+	}
+
 	//
 	// Main simplification function
 	//
@@ -351,7 +370,7 @@ namespace MeshSimplify
 	//                 5..8 are good numbers
 	//                 more iterations yield higher quality
 	//
-	void process(int target_count, std::vector<Float3>& fix_points, double agressiveness, bool verbose)
+	void process(const int target_tri_count, const int target_vert_count, std::vector<Float3>& fix_points, const int max_iter, double agressiveness, bool verbose)
 	{
 		if(fix_points.empty()==false)
 			loopi(0, vertices.size())
@@ -370,9 +389,10 @@ namespace MeshSimplify
 		int triangle_count = triangles.size();
 		//int iteration = 0;
 		//loop(iteration,0,100)
-		for (int iteration = 0; iteration < 100; iteration++)
+		for (int iteration = 0; iteration < max_iter; iteration++)
 		{
-			if (triangle_count - deleted_triangles <= target_count)break;
+			if (IsOK(target_tri_count, target_vert_count, triangle_count - deleted_triangles, ComputeCurrentVertCount()))
+				break;
 
 			// update mesh once in a while
 			if (iteration % 5 == 0)
@@ -461,9 +481,10 @@ namespace MeshSimplify
 					break;
 				}
 				// done?
-				if (triangle_count - deleted_triangles <= target_count)break;
+				//not check vertex count here
+				if (IsOK(target_tri_count, target_vert_count, triangle_count - deleted_triangles, target_vert_count+1))
+					break;
 			}
-			
 		}
 		// clean up mesh
 		compact_mesh();

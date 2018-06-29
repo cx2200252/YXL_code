@@ -24,7 +24,8 @@ namespace MeshSimplify
 	};
 
 	void init(float* v, const int cnt_v, int* tris, int cnt_tri);
-	void process(int target_tri_count, std::vector<Float3>& fix_points, double agressiveness = 7, bool verbose = false);
+	//target_tri_count, target_tri_count: <=0 to ignore, cannot both be ignored
+	void process(const int target_tri_count, const int target_vert_count, std::vector<Float3>& fix_points, const int max_iter=100, double agressiveness = 7, bool verbose = false);
 	int get_result_vert_num();
 	int get_result_tri_num();
 	void get_result_data(float* v, int* tris);
