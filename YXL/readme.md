@@ -1,10 +1,10 @@
 # outlines
 - [YXLJsonReader](#yxljsonreader)
-- [YXLHelper](#YXLHelper)
-- [TriMesh](#TriMesh)
-- [MeshRenderer](#MeshRenderer)
-- [MeshSimplify](#MeshSimplify)
-- [YXLWebpWarpper](#YXLWebpWarpper)
+- [YXLHelper](#yxlhelper)
+- [TriMesh](#trimesh)
+- [MeshRenderer](#meshrenderer)
+- [MeshSimplify](#meshsimplify)
+- [YXLWebpWarpper](#yxlwebpwarpper)
 
 ## YXLJsonReader
 A C++ warpper of [rapidjson](https://github.com/Tencent/rapidjson) for easy json read/write and it is header only.
