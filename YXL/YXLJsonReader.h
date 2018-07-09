@@ -30,17 +30,17 @@ namespace YXL
 		{
 			wchar_t * lpUnicodeStr = NULL;
 			int nRetLen = 0;
-			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, NULL, NULL);  //获取�?换到Unicode编码后所需要的字�?�空间长�?
-			lpUnicodeStr = new WCHAR[nRetLen + 1];  //为Unicode字�?�串空间
-			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, lpUnicodeStr, nRetLen);  //�?换到Unicode编码
-			if (!nRetLen)  //�?换失败则出错退�?
+			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, NULL, NULL);
+			lpUnicodeStr = new WCHAR[nRetLen + 1];
+			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, lpUnicodeStr, nRetLen);
+			if (!nRetLen)
 			{
 				delete[] lpUnicodeStr;
 				return 0;
 			}
-			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, NULL, NULL, NULL, NULL);  //获取�?换到GBK编码后所需要的字�?�空间长�?
+			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, NULL, NULL, NULL, NULL);
 			char* tmp = new char[nRetLen];
-			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, tmp, nRetLen, NULL, NULL);  //�?换到GBK编码
+			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, tmp, nRetLen, NULL, NULL);
 			delete[] lpUnicodeStr;
 			std::string ret = tmp;
 			delete[] tmp;
@@ -51,17 +51,17 @@ namespace YXL
 		{
 			wchar_t * lpUnicodeStr = NULL;
 			int nRetLen = 0;
-			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, NULL, NULL);  //获取�?换到Unicode编码后所需要的字�?�空间长�?
-			lpUnicodeStr = new WCHAR[nRetLen + 1];  //为Unicode字�?�串空间
-			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, lpUnicodeStr, nRetLen);  //�?换到Unicode编码
-			if (!nRetLen)  //�?换失败则出错退�?
+			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, NULL, NULL);
+			lpUnicodeStr = new WCHAR[nRetLen + 1];
+			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, lpUnicodeStr, nRetLen);
+			if (!nRetLen)
 			{
 				delete[] lpUnicodeStr;
 				return 0;
 			}
-			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, NULL, 0, NULL, NULL);  //获取�?换到UTF8编码后所需要的字�?�空间长�?
+			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, NULL, 0, NULL, NULL);
 			char* tmp = new char[nRetLen];
-			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, (char *)tmp, nRetLen, NULL, NULL);  //�?换到UTF8编码
+			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, (char *)tmp, nRetLen, NULL, NULL);
 			std::string ret = tmp;
 			delete[] tmp;
 			return ret;
@@ -223,7 +223,21 @@ namespace YXL
 
 		template<>
 		struct ValueGetter<float> {
-			static float Get(const rapidjson::Value & val) 
+			static float Get(const rapidjson::Value & val)
+			{
+				if (val.IsFloat())
+					return val.GetFloat();
+				return val.GetInt();
+			}
+			static bool IsType(const rapidjson::Value & val)
+			{
+				return val.IsFloat() || val.IsInt();
+			}
+		};
+
+		template<>
+		struct ValueGetter<double> {
+			static double Get(const rapidjson::Value & val)
 			{
 				if (val.IsFloat())
 					return val.GetFloat();
@@ -307,10 +321,10 @@ namespace YXL
 				ret->Load(path);
 				return ret;
 			}
-			static std::shared_ptr<Json> NewFromJSONContent(const std::string& content)
+			static std::shared_ptr<Json> NewFromJSONContent(const std::string& content, bool with_comment = false)
 			{
 				auto ret = std::shared_ptr<Json>(new Json);
-				ret->LoadFronJsonContent(content);
+				ret->LoadFronJsonContent(content, with_comment);
 				return ret;
 			}
 
@@ -339,12 +353,40 @@ namespace YXL
 				}
 				return true;
 			}
-			bool LoadFronJsonContent(const std::string& content)
+			bool LoadFronJsonContent(const std::string& content, bool with_comment=false)
 			{
-				if (_doc.Parse(content.c_str()).HasParseError())
-				{
-					std::cout << "the json content has been corrupted: " << content << std::endl;
+				if (content.length() < 2)
 					return false;
+				if (false == with_comment)
+				{
+					if (_doc.Parse(content.c_str()).HasParseError())
+					{
+						std::cout << "the json content has been corrupted: " << content << std::endl;
+						return false;
+					}
+				}
+				else
+				{
+					std::string tmp;
+					tmp.reserve(content.length());
+					bool escape = false;
+					size_t pre_pos = 0;
+					size_t cur_pos;
+					while (std::string::npos != (cur_pos = content.find('\n', pre_pos)))
+					{
+						std::string line = content.substr(pre_pos, cur_pos - pre_pos+1);
+						pre_pos = cur_pos+1;
+						if (Esacpe(line).substr(0, 2) != "//")
+							tmp += line;
+					}
+					std::string line = content.substr(pre_pos, content.length() - pre_pos);
+					if (Esacpe(line).substr(0, 2) != "//")
+						tmp += line;
+					if (_doc.Parse(tmp.c_str()).HasParseError())
+					{
+						std::cout << "the json content has been corrupted: " << content << std::endl;
+						return false;
+					}
 				}
 				return true;
 			}

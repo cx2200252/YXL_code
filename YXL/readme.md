@@ -1,7 +1,12 @@
 # outlines
-- [YXLJsonReader.h](#yxljsonreader-h)
+- [YXLJsonReader](#yxljsonreader)
+- [YXLHelper](#YXLHelper)
+- [TriMesh](#TriMesh)
+- [MeshRenderer](#MeshRenderer)
+- [MeshSimplify](#MeshSimplify)
+- [YXLWebpWarpper](#YXLWebpWarpper)
 
-## YXLJsonReader.h
+## YXLJsonReader
 A C++ warpper of [rapidjson](https://github.com/Tencent/rapidjson) for easy json read/write and it is header only.
 
 #### example
@@ -151,3 +156,45 @@ std::vector<TestNode> nodes2;
 //need implement full specialization of gettter for TestNode
 json->ReadValue(nodes2, "test_node");
 ```
+
+## YXLHelper
+useful functions/classes.
+### marco to switch on/off
+```C
+#define _YXL_OTHER_
+#define _YXL_FILES_
+#define _YXL_STRING_
+#define _YXL_PARAM_PARSER_
+#define _YXL_PRINT_
+#define _YXL_OUT_STREAM_
+#define _YXL_UNION_FIND_
+#define _YXL_KD_TREE_
+#define _YXL_TIME_
+#define _YXL_CONSOLE_
+#define _YXL_TRANSFORM_
+#define _YXL_GRAPHIC_
+#define _YXL_IMG_PROC_
+//#define _YXL_GLFW_
+```
+
+## TriMesh
+class for loading model.
+- mixed triangle/quad in one file
+- remove unused points   
+- find connected componenets
+- converte to renderable topology
+- consistency of in/out files
+
+## MeshRenderer
+class to render TriMesh.
+- call & actual render can run in differt threads
+  - define _USE_OWN_GL_CONTEXT_
+  - return render result as a cv::Mat
+
+## MeshSimplify
+mesh simplify with:
+- fix some vertices
+- tolerance: #face or #vertex
+
+## YXLWebpWarpper
+webp read/write

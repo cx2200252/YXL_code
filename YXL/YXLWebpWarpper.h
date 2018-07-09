@@ -1,9 +1,7 @@
 #pragma once
 #include <string>
-#include <webp/encode.h>
+#include "webp/webp/encode.h"
 #include <opencv2/opencv.hpp>
-
-#pragma comment(lib, "webp.lib")
 
 namespace YXL
 {

@@ -1,0 +1,176 @@
+#define PM_IS_LIBRARY
+#line 1 "G:/faceunity/jc/bin/win32_release/../../wrapper/webp/utils/bit_reader.h"
+// Copyright 2010 Google Inc. All Rights Reserved.
+//
+// Use of this source code is governed by a BSD-style license
+// that can be found in the COPYING file in the root of the source
+// tree. An additional intellectual property rights grant can be found
+// in the file PATENTS. All contributing project authors may
+// be found in the AUTHORS file in the root of the source tree.
+// -----------------------------------------------------------------------------
+//
+// Boolean decoder
+//
+// Author: Skal (pascal.massimino@gmail.com)
+//         Vikas Arora (vikaas.arora@gmail.com)
+
+#ifndef WEBP_UTILS_BIT_READER_H_
+#define WEBP_UTILS_BIT_READER_H_
+
+#include <assert.h>
+#ifdef _MSC_VER
+#include <stdlib.h>  // _byteswap_ulong
+#endif
+#include "../webp/types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// The Boolean decoder needs to maintain infinite precision on the value_ field.
+// However, since range_ is only 8bit, we only need an active window of 8 bits
+// for value_. Left bits (MSB) gets zeroed and shifted away when value_ falls
+// below 128, range_ is updated, and fresh bits read from the bitstream are
+// brought in as LSB. To avoid reading the fresh bits one by one (slow), we
+// cache BITS of them ahead. The total of (BITS + 8) bits must fit into a
+// natural register (with type bit_t). To fetch BITS bits from bitstream we
+// use a type lbit_t.
+//
+// BITS can be any multiple of 8 from 8 to 56 (inclusive).
+// Pick values that fit natural register size.
+
+#if defined(__i386__) || defined(_M_IX86)      // x86 32bit
+#define BITS 24
+#elif defined(__x86_64__) || defined(_M_X64)   // x86 64bit
+#define BITS 56
+#elif defined(__arm__) || defined(_M_ARM)      // ARM
+#define BITS 24
+#elif defined(__aarch64__)                     // ARM 64bit
+#define BITS 56
+#elif defined(__mips__)                        // MIPS
+#define BITS 24
+#else                                          // reasonable default
+#define BITS 24
+#endif
+
+//------------------------------------------------------------------------------
+// Derived types and constants:
+//   bit_t = natural register type for storing 'value_' (which is BITS+8 bits)
+//   range_t = register for 'range_' (which is 8bits only)
+
+#if (BITS > 24)
+typedef uint64_t bit_t;
+#else
+typedef uint32_t bit_t;
+#endif
+
+typedef uint32_t range_t;
+
+//------------------------------------------------------------------------------
+// Bitreader
+
+typedef struct DEDUP_vP8_BitReader DEDUP_vP8_BitReader;
+struct DEDUP_vP8_BitReader {
+  // boolean decoder  (keep the field ordering as is!)
+  bit_t value_;               // current value
+  range_t range_;             // current range minus 1. In [127, 254] interval.
+  int bits_;                  // number of valid bits left
+  // read buffer
+  const uint8_t* buf_;        // next byte to be read
+  const uint8_t* buf_end_;    // end of read buffer
+  const uint8_t* buf_max_;    // max packed-read position on buffer
+  int eof_;                   // true if input is exhausted
+};
+
+// Initialize the bit reader and the boolean decoder.
+void DEDUP_vP8_InitBitReader(DEDUP_vP8_BitReader* const br,
+                      const uint8_t* const start, size_t size);
+// Sets the working read buffer.
+void DEDUP_vP8_BitReaderSetBuffer(DEDUP_vP8_BitReader* const br,
+                           const uint8_t* const start, size_t size);
+
+// Update internal pointers to displace the byte buffer by the
+// relative offset 'offset'.
+void DEDUP_vP8_RemapBitReader(DEDUP_vP8_BitReader* const br, ptrdiff_t offset);
+
+// return the next value made of 'num_bits' bits
+uint32_t DEDUP_vP8_GetValue(DEDUP_vP8_BitReader* const br, int num_bits);
+static WEBP_INLINE uint32_t DEDUP_vP8_Get(DEDUP_vP8_BitReader* const br) {
+  return DEDUP_vP8_GetValue(br, 1);
+}
+
+// return the next value with sign-extension.
+int32_t DEDUP_vP8_GetSignedValue(DEDUP_vP8_BitReader* const br, int num_bits);
+
+// bit_reader_inl.h will implement the following methods:
+//   static WEBP_INLINE int DEDUP_vP8_GetBit(DEDUP_vP8_BitReader* const br, int prob)
+//   static WEBP_INLINE int DEDUP_vP8_GetSigned(DEDUP_vP8_BitReader* const br, int v)
+// and should be included by the .c files that actually need them.
+// This is to avoid recompiling the whole library whenever this file is touched,
+// and also allowing platform-specific ad-hoc hacks.
+
+// -----------------------------------------------------------------------------
+// Bitreader for lossless format
+
+// maximum number of bits (inclusive) the bit-reader can handle:
+#define DEDUP_vP8_L_MAX_NUM_BIT_READ 24
+
+#define DEDUP_vP8_L_LBITS 64  // Number of bits prefetched (= bit-size of vp8l_val_t).
+#define DEDUP_vP8_L_WBITS 32  // Minimum number of bytes ready after DEDUP_vP8_LFillBitWindow.
+
+typedef uint64_t vp8l_val_t;  // right now, this bit-reader can only use 64bit.
+
+typedef struct {
+  vp8l_val_t     val_;        // pre-fetched bits
+  const uint8_t* buf_;        // input byte buffer
+  size_t         len_;        // buffer length
+  size_t         pos_;        // byte position in buf_
+  int            bit_pos_;    // current bit-reading position in val_
+  int            eos_;        // true if a bit was read past the end of buffer
+} DEDUP_vP8_LBitReader;
+
+void DEDUP_vP8_LInitBitReader(DEDUP_vP8_LBitReader* const br,
+                       const uint8_t* const start,
+                       size_t length);
+
+//  Sets a new data buffer.
+void DEDUP_vP8_LBitReaderSetBuffer(DEDUP_vP8_LBitReader* const br,
+                            const uint8_t* const buffer, size_t length);
+
+// Reads the specified number of bits from read buffer.
+// Flags an error in case end_of_stream or n_bits is more than the allowed limit
+// of DEDUP_vP8_L_MAX_NUM_BIT_READ (inclusive).
+// Flags eos_ if this read attempt is going to cross the read buffer.
+uint32_t DEDUP_vP8_LReadBits(DEDUP_vP8_LBitReader* const br, int n_bits);
+
+// Return the prefetched bits, so they can be looked up.
+static WEBP_INLINE uint32_t DEDUP_vP8_LPrefetchBits(DEDUP_vP8_LBitReader* const br) {
+  return (uint32_t)(br->val_ >> (br->bit_pos_ & (DEDUP_vP8_L_LBITS - 1)));
+}
+
+// Returns true if there was an attempt at reading bit past the end of
+// the buffer. Doesn't set br->eos_ flag.
+static WEBP_INLINE int DEDUP_vP8_LIsEndOfStream(const DEDUP_vP8_LBitReader* const br) {
+  assert(br->pos_ <= br->len_);
+  return br->eos_ || ((br->pos_ == br->len_) && (br->bit_pos_ > DEDUP_vP8_L_LBITS));
+}
+
+// For jumping over a number of bits in the bit stream when accessed with
+// DEDUP_vP8_LPrefetchBits and DEDUP_vP8_LFillBitWindow.
+static WEBP_INLINE void DEDUP_vP8_LSetBitPos(DEDUP_vP8_LBitReader* const br, int val) {
+  br->bit_pos_ = val;
+  br->eos_ = DEDUP_vP8_LIsEndOfStream(br);
+}
+
+// Advances the read buffer by 4 bytes to make room for reading next 32 bits.
+// Speed critical, but infrequent part of the code can be non-inlined.
+extern void DEDUP_vP8_LDoFillBitWindow(DEDUP_vP8_LBitReader* const br);
+static WEBP_INLINE void DEDUP_vP8_LFillBitWindow(DEDUP_vP8_LBitReader* const br) {
+  if (br->bit_pos_ >= DEDUP_vP8_L_WBITS) DEDUP_vP8_LDoFillBitWindow(br);
+}
+
+#ifdef __cplusplus
+}    // extern "C"
+#endif
+
+#endif  /* WEBP_UTILS_BIT_READER_H_ */

@@ -2,7 +2,7 @@
 #define _YXL_QT_HELPER_H_
 
 #if defined(_WITH_QT_) && defined(_WITH_OPENCV_)
-#include "CmFile.h"
+#include "YXLHelper.h"
 #include <QLabel>
 
 #define ToQStr(str) QString::fromLocal8Bit((str).c_str())
