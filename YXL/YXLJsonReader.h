@@ -1,8 +1,8 @@
 #ifndef _YXL_JSON_READER_H_
 #define _YXL_JSON_READER_H_
 
-#include "rapidjson/document.h"
-#include "rapidjson/prettywriter.h"
+#include <rapidjson/document.h>
+#include <rapidjson/prettywriter.h>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -30,17 +30,17 @@ namespace YXL
 		{
 			wchar_t * lpUnicodeStr = NULL;
 			int nRetLen = 0;
-			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, NULL, NULL);
-			lpUnicodeStr = new WCHAR[nRetLen + 1];
-			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, lpUnicodeStr, nRetLen);
-			if (!nRetLen)
+			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, NULL, NULL);  //获取�?换到Unicode编码后所需要的字�?�空间长�?
+			lpUnicodeStr = new WCHAR[nRetLen + 1];  //为Unicode字�?�串空间
+			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, lpUnicodeStr, nRetLen);  //�?换到Unicode编码
+			if (!nRetLen)  //�?换失败则出错退�?
 			{
 				delete[] lpUnicodeStr;
 				return 0;
 			}
-			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, NULL, NULL, NULL, NULL);
+			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, NULL, NULL, NULL, NULL);  //获取�?换到GBK编码后所需要的字�?�空间长�?
 			char* tmp = new char[nRetLen];
-			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, tmp, nRetLen, NULL, NULL);
+			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, tmp, nRetLen, NULL, NULL);  //�?换到GBK编码
 			delete[] lpUnicodeStr;
 			std::string ret = tmp;
 			delete[] tmp;
@@ -51,17 +51,17 @@ namespace YXL
 		{
 			wchar_t * lpUnicodeStr = NULL;
 			int nRetLen = 0;
-			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, NULL, NULL);
-			lpUnicodeStr = new WCHAR[nRetLen + 1];
-			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, lpUnicodeStr, nRetLen);
-			if (!nRetLen)
+			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, NULL, NULL);  //获取�?换到Unicode编码后所需要的字�?�空间长�?
+			lpUnicodeStr = new WCHAR[nRetLen + 1];  //为Unicode字�?�串空间
+			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, lpUnicodeStr, nRetLen);  //�?换到Unicode编码
+			if (!nRetLen)  //�?换失败则出错退�?
 			{
 				delete[] lpUnicodeStr;
 				return 0;
 			}
-			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, NULL, 0, NULL, NULL);
+			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, NULL, 0, NULL, NULL);  //获取�?换到UTF8编码后所需要的字�?�空间长�?
 			char* tmp = new char[nRetLen];
-			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, (char *)tmp, nRetLen, NULL, NULL);
+			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, (char *)tmp, nRetLen, NULL, NULL);  //�?换到UTF8编码
 			std::string ret = tmp;
 			delete[] tmp;
 			return ret;
@@ -356,7 +356,10 @@ namespace YXL
 			bool LoadFronJsonContent(const std::string& content, bool with_comment=false)
 			{
 				if (content.length() < 2)
+				{
+					std::cout << "no content" << std::endl;
 					return false;
+				}
 				if (false == with_comment)
 				{
 					if (_doc.Parse(content.c_str()).HasParseError())
@@ -374,13 +377,13 @@ namespace YXL
 					size_t cur_pos;
 					while (std::string::npos != (cur_pos = content.find('\n', pre_pos)))
 					{
-						std::string line = content.substr(pre_pos, cur_pos - pre_pos+1);
+						std::string line = Esacpe(content.substr(pre_pos, cur_pos - pre_pos+1));
 						pre_pos = cur_pos+1;
-						if (Esacpe(line).substr(0, 2) != "//")
+						if (line.length()<2 || line.substr(0, 2) != "//")
 							tmp += line;
 					}
-					std::string line = content.substr(pre_pos, content.length() - pre_pos);
-					if (Esacpe(line).substr(0, 2) != "//")
+					std::string line = Esacpe(content.substr(pre_pos, content.length() - pre_pos));
+					if (line.length()<2 || line.substr(0, 2) != "//")
 						tmp += line;
 					if (_doc.Parse(tmp.c_str()).HasParseError())
 					{
@@ -412,6 +415,14 @@ namespace YXL
 				int len = content.length();
 				out.write((char*)&len, sizeof(len));
 				out.write(content.c_str(), content.length());
+			}
+			void GetJsonContent(std::string& content) const 
+			{
+				using namespace rapidjson;
+				StringBuffer sb;
+				PrettyWriter<StringBuffer> writer(sb);
+				_doc.Accept(writer);    // Accept() traverses the DOM and generates Handler events.
+				content = sb.GetString();
 			}
 
 		public:
@@ -561,6 +572,8 @@ namespace YXL
 			{
 				auto beg = str.find_first_not_of(escape_ch);
 				auto end = str.find_last_not_of(escape_ch);
+				if (std::string::npos == beg || std::string::npos == end)
+					return "";
 				return str.substr(beg, end - beg + 1);
 			}
 
