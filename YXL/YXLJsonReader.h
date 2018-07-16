@@ -30,17 +30,17 @@ namespace YXL
 		{
 			wchar_t * lpUnicodeStr = NULL;
 			int nRetLen = 0;
-			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, NULL, NULL);  //获取�?换到Unicode编码后所需要的字�?�空间长�?
-			lpUnicodeStr = new WCHAR[nRetLen + 1];  //为Unicode字�?�串空间
-			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, lpUnicodeStr, nRetLen);  //�?换到Unicode编码
-			if (!nRetLen)  //�?换失败则出错退�?
+			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, NULL, NULL);
+			lpUnicodeStr = new WCHAR[nRetLen + 1];
+			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, lpUnicodeStr, nRetLen);
+			if (!nRetLen)
 			{
 				delete[] lpUnicodeStr;
 				return 0;
 			}
-			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, NULL, NULL, NULL, NULL);  //获取�?换到GBK编码后所需要的字�?�空间长�?
+			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, NULL, NULL, NULL, NULL);
 			char* tmp = new char[nRetLen];
-			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, tmp, nRetLen, NULL, NULL);  //�?换到GBK编码
+			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, tmp, nRetLen, NULL, NULL);
 			delete[] lpUnicodeStr;
 			std::string ret = tmp;
 			delete[] tmp;
@@ -51,17 +51,17 @@ namespace YXL
 		{
 			wchar_t * lpUnicodeStr = NULL;
 			int nRetLen = 0;
-			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, NULL, NULL);  //获取�?换到Unicode编码后所需要的字�?�空间长�?
-			lpUnicodeStr = new WCHAR[nRetLen + 1];  //为Unicode字�?�串空间
-			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, lpUnicodeStr, nRetLen);  //�?换到Unicode编码
-			if (!nRetLen)  //�?换失败则出错退�?
+			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, NULL, NULL);
+			lpUnicodeStr = new WCHAR[nRetLen + 1];
+			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, lpUnicodeStr, nRetLen);
+			if (!nRetLen)
 			{
 				delete[] lpUnicodeStr;
 				return 0;
 			}
-			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, NULL, 0, NULL, NULL);  //获取�?换到UTF8编码后所需要的字�?�空间长�?
+			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, NULL, 0, NULL, NULL);
 			char* tmp = new char[nRetLen];
-			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, (char *)tmp, nRetLen, NULL, NULL);  //�?换到UTF8编码
+			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, (char *)tmp, nRetLen, NULL, NULL);
 			std::string ret = tmp;
 			delete[] tmp;
 			return ret;
@@ -100,9 +100,9 @@ namespace YXL
 
 		template<typename type>
 		struct ValueParser {
-			static const type& Parse(const type& val, rapidjson::Document& doc) 
+			static rapidjson::Value Parse(const type& val, rapidjson::Document& doc)
 			{
-				return val;
+				//static_assert(false, "no parser");
 			}
 		};
 
@@ -114,6 +114,26 @@ namespace YXL
 				for (auto val : vals)
 					ret.PushBack(ValueParser<type>::Parse(val, doc), doc.GetAllocator());
 				return ret;
+			}
+		};
+
+		template<>
+		struct ValueParser<int> {
+			static rapidjson::Value Parse(const int val, rapidjson::Document& doc)
+			{
+				rapidjson::Value v;
+				v.SetInt(val);
+				return v;
+			}
+		};
+
+		template<>
+		struct ValueParser<float> {
+			static rapidjson::Value Parse(const float val, rapidjson::Document& doc)
+			{
+				rapidjson::Value v;
+				v.SetFloat(val);
+				return v;
 			}
 		};
 
@@ -152,6 +172,8 @@ namespace YXL
 #define ToJsonValue(type, val, doc) YXL::JSON::ValueParser<type>::Parse(val, doc)
 #define ToJsonValueVec(type, vals, doc) YXL::JSON::ValueParser<std::vector<type> >::Parse(vals, doc)
 
+#define JsonParseInt(val, doc) ToJsonValue(int, val, doc)
+#define JsonParseFloat(val, doc) ToJsonValue(float, val, doc)
 #define JsonParseStr(val, doc) ToJsonValue(std::string, val, doc)
 #define JsonParseCStr(val, doc) ToJsonValue(const char*, val, doc)
 #define JsonParseVecStr(vals, doc) ToJsonValueVec(std::string, vals, doc)
