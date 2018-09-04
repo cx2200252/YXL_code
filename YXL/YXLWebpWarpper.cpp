@@ -1,7 +1,5 @@
 #include "YXLWebpWarpper.h"
-#include "CmFile.h"
-
-#ifdef CV_MAJOR_VERSION
+#include <iostream>
 
 namespace YXL
 {
@@ -28,6 +26,8 @@ namespace YXL
 	}
 }
 
+#ifdef WITH_OPENCV
+
 bool YXL::WebP::Convert2Webp(const std::string & src_path, const std::string & dest_path)
 {
 	cv::Mat img = cv::imread(src_path, -1);
@@ -39,47 +39,41 @@ bool YXL::WebP::Convert2Webp(cv::Mat img, const std::string & dest_path)
 	if (img.empty())
 		return false;
 	if (img.channels() == 3)
-		cv::cvtColor(img, img, CV_BGR2BGRA);
+		cv::cvtColor(img, img, CV_BGR2RGBA);
+	else
+		cv::cvtColor(img, img, CV_BGRA2RGBA);
 
-	WebPConfig config;
-	WebPPicture pic;
-	if (!WebPPictureInit(&pic) || !WebPConfigInit(&config))
-		return false;
-	//check within WebPEncode
-	/*if (!WebPValidateConfig(&config))
-	return false;*/
-
-	pic.use_argb = 1;
-	pic.argb = reinterpret_cast<uint32_t*>(img.data);
-	pic.argb_stride = img.cols;
-	pic.width = img.cols;
-	pic.height = img.rows;
-
-	WebPMemoryWriter memory_writer;
-	WebPMemoryWriterInit(&memory_writer);
-
-	pic.writer = WebPMemoryWrite;
-	pic.custom_ptr = (void*)&memory_writer;
-
-	if (!WebPEncode(&config, &pic))
-	{
-		std::cout << "Error! Cannot encode picture as WebP" << std::endl;
-		std::cout << "Error code: " << pic.error_code << " (" << kErrorMessages[pic.error_code] << ")" << std::endl;
-		return false;
-	}
-
+	std::string out;
+	bool ret = ToWebp(img.data(), img.cols, img.rows, out);
+	
 	FILE* file = fopen(dest_path.c_str(), "wb");
-	auto ret = fwrite(memory_writer.mem, memory_writer.size, 1, file);
+	auto ret = fwrite(out, out.length(), 1, file);
 	fclose(file);
-
-
-#if WEBP_ENCODER_ABI_VERSION > 0x0203
-	WebPMemoryWriterClear(&memory_writer);
-#else
-	free(memory_writer.mem);
-#endif
-
 	return ret == 1;
 }
 
 #endif
+
+bool YXL::WebP::ToWebp(char * in, int w, int h, std::string & out)
+{
+	uint8_t* ptr = nullptr;
+	//auto size = WebPEncodeBGRA(reinterpret_cast<uint8_t*>(in), w, h, w, 100.f, &ptr);
+	auto size = WebPEncodeLosslessRGBA(reinterpret_cast<uint8_t*>(in), w, h, w, &ptr);
+
+	if (!size)
+	{
+		std::cout << "Error! Cannot encode picture as WebP" << std::endl;
+		return false;
+	}
+	out = std::string((char*)ptr, size);
+
+	WebPFree(ptr);
+
+	return true;
+}
+
+void YXL::WebP::FromWebp(char * in, const int in_size, std::string & out, int & w, int & h)
+{
+	auto ret = WebPDecodeRGBA(reinterpret_cast<uint8_t*>(in), in_size, &w, &h);
+	out = std::string((char*)ret, w*h * 4);
+}

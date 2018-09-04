@@ -780,6 +780,7 @@ namespace YXL
 	{
 		struct Element
 		{
+			int idx;
 			type val[dim];
 		};
 		struct Node
@@ -806,18 +807,24 @@ namespace YXL
 		void Bulid(const type* data, const int ele_cnt)
 		{
 			std::vector<Element> ele(ele_cnt);
-			memcpy(&ele[0], data, ele_cnt*sizeof(Element));
+			for (int i(0); i != ele_cnt; ++i)
+			{
+				auto& e = ele[i];
+				e.idx = i;
+				memcpy(e.val, data + i*dim, sizeof(type)*dim);
+			}
 
 			_root = Build(&ele[0], ele_cnt, 0);
 		}
 
-		void FindNearest(type* ret, const type* ele)
+		int FindNearest(type* ret, const type* ele)
 		{
 			Element _ele, _ret;
 			memcpy(_ele.val, ele, sizeof(Element));
 			double min_dist = (std::numeric_limits<double>::max)();
 			FindNearest(_ret, _ele, _root, min_dist);
 			memcpy(ret, _ret.val, sizeof(Element));
+			return _ret.idx;
 		}
 
 	private:
