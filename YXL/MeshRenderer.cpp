@@ -17,12 +17,12 @@ namespace YXL
 		{
 			CV_Assert(false && "could not start GLFW3.");
 		}
-		const std::string title = "compare result";
+		const std::string title = "no name";
 
 		GLFWwindow* wnd(nullptr);
 
 		glfwWindowHint(GLFW_VISIBLE, 0);
-		wnd = glfwCreateWindow(1280, 720, title.c_str(), NULL, NULL);
+		wnd = glfwCreateWindow(100, 100, title.c_str(), NULL, NULL);
 		if (nullptr == wnd)
 		{
 			glfwTerminate();
@@ -115,9 +115,7 @@ namespace YXL
 		glBufferData(GL_ARRAY_BUFFER, sizeof(float)*vertex_cnt * 8, nullptr, GL_DYNAMIC_DRAW);
 		glBufferSubData(GL_ARRAY_BUFFER, sizeof(float)*vertex_cnt * 3, sizeof(float)*vertex_cnt * 2, mesh->_info->_render_uvs.data);
 
-		glGenBuffers(1, &ebo);
-		//参数2要与is_reverse_Z的初始化值相反
-		Update(mesh, false);
+		Update(mesh, is_reverse_Z);
 
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)(sizeof(float)*vertex_cnt * 3));
@@ -139,10 +137,10 @@ namespace YXL
 
 	void MeshRenderer::VAO::UpdateTriangles(std::shared_ptr<TriMesh> mesh, bool is_reverse_Z)
 	{
-		if (this->is_reverse_Z == is_reverse_Z)
-		{
+		if (ebo && this->is_reverse_Z == is_reverse_Z)
 			return;
-		}
+		if(!ebo)
+			glGenBuffers(1, &ebo);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 
@@ -573,6 +571,10 @@ namespace YXL
 
 			SetGLStates();
 
+			glClearColor(0.7f, 0.7f, 0.7f, 1.0f);
+			glClearDepth(Z_FAR);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 			RenderNormally(fbo);
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -598,9 +600,9 @@ namespace YXL
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glEnable(GL_CULL_FACE);
+		/*glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
-		glFrontFace(GL_CCW);
+		glFrontFace(GL_CCW);*/
 
 		//glClearColor(0.0f, 0.0f, 0.00f, 1.0f);
 		/*glClearColor(0.7f, 0.7f, 0.7f, 1.0f);

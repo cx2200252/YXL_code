@@ -19,6 +19,7 @@ namespace YXL
 {
 	class MeshRenderer;
 	class TriMesh;
+	class BSTensor;
 
 	struct YXL_EXPORT TriSharedInfo
 	{
@@ -114,6 +115,7 @@ namespace YXL
 	class YXL_EXPORT TriMesh
 	{
 		friend class MeshRenderer;
+		friend class BSTensor;
 
 	private:
 		static CRITICAL_SECTION s_cs_optimise_infos;

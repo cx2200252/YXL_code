@@ -78,7 +78,7 @@ namespace YXL
 			GLuint vao = 0u;
 			GLuint vbo = 0u;
 			GLuint ebo = 0u;
-			bool is_reverse_Z = true;
+			bool is_reverse_Z=true;
 
 			void Init(std::shared_ptr<TriMesh> mesh);
 

@@ -89,15 +89,18 @@ typedef std::vector<double> vecD;
 	cv::error(cv::Exception(CV_StsAssert, msg, __FUNCTION__, __FILE__, __LINE__) ); }\
 }
 
+#ifdef _WITH_OPENCV_WORLD_
+#pragma comment( lib, CV_LIB("world"))
+#else
 #pragma comment( lib, CV_LIB("core"))
 #pragma comment( lib, CV_LIB("imgproc"))
 #pragma comment( lib, CV_LIB("highgui"))
-
 
 #if (2 < CV_MAJOR_VERSION)
 #pragma comment( lib, CV_LIB("imgcodecs"))
 #endif
 
+#endif
 typedef const cv::Mat CMat;
 typedef std::vector<cv::Mat> vecM;
 
@@ -1326,6 +1329,33 @@ namespace YXL
 			};
 			*/
 		}
+		template<typename type> void RotationFromQuaternion(type* ret, type* quat)
+		{
+			type q[4];
+			Normalize<4, type>(q, quat);
+
+			type xy = q[0]*q[1];
+			type yz = q[1]*q[2];
+			type zx = q[2]*q[0];
+			type x2 = q[0]*q[0];
+			type y2 = q[1]*q[1];
+			type z2 = q[2]*q[2];
+			type xw = q[0]*q[3];
+			type yw = q[1]*q[3];
+			type zw = q[2]*q[3];
+
+			ret[0] = 1.f - 2.f*(y2 + z2);
+			ret[4] = 2.f*(xy - zw);
+			ret[8] = 2.f*(zx + yw);
+			ret[1] = 2.f*(xy + zw);
+			ret[5] = 1.f - 2.f*(x2 + z2);
+			ret[9] = 2.f*(yz - xw);
+			ret[2] = 2.f*(zx - yw);
+			ret[6] = 2.f*(yz + xw);
+			ret[10] = 1.f - 2.f*(x2 + y2);
+			ret[15] = 1.f;
+		}
+
 		template<typename type> void Scale(type* ret, type* scale_xyz)
 		{
 			memset(ret, 0, sizeof(type) * 16);
@@ -1382,6 +1412,13 @@ namespace YXL
 				ret *= cv::Mat(4, 4, CV_32FC1, tmp);
 			}
 
+			return ret;
+		}
+
+		inline cv::Mat RotationFromQuaternion(cv::Vec4f quat)
+		{
+			cv::Mat ret = cv::Mat::eye(4, 4, CV_32FC1);
+			RotationFromQuaternion((float*)ret.data, quat.val);
 			return ret;
 		}
 
