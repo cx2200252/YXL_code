@@ -15,6 +15,8 @@
 #define _YXL_TRANSFORM_
 #define _YXL_GRAPHIC_
 #define _YXL_IMG_PROC_
+#define _YXL_HASH_
+#define _YXL_CIPHER_
 //#define _YXL_GLFW_
 
 #include <string>
@@ -42,13 +44,15 @@
 #define LIB_YXL_HELPER
 #endif
 
-typedef const std::string CStr;
-typedef std::vector<std::string> vecS;
-typedef std::vector<int> vecI;
-typedef std::vector<std::string> vecS;
-typedef std::vector<float> vecF;
-typedef std::vector<double> vecD;
-#define _S(str) ((str).c_str())
+namespace YXL
+{
+	typedef const std::string CStr;
+	typedef std::vector<std::string> vecS;
+	typedef std::vector<int> vecI;
+	typedef std::vector<std::string> vecS;
+	typedef std::vector<float> vecF;
+	typedef std::vector<double> vecD;
+}
 
 //check marco
 #ifndef _WITH_WINDOWS_
@@ -101,8 +105,11 @@ typedef std::vector<double> vecD;
 #endif
 
 #endif
-typedef const cv::Mat CMat;
-typedef std::vector<cv::Mat> vecM;
+namespace YXL
+{
+	typedef const cv::Mat CMat;
+	typedef std::vector<cv::Mat> vecM;
+}
 
 #endif
 
@@ -150,8 +157,6 @@ namespace YXL
 	{
 		return std::make_pair((unsigned int)(l >> 32), (unsigned int)(l & 0xffffffff));
 	}
-
-	std::string LIB_YXL_HELPER SHA1Digest(std::string str);
 
 	inline int GetCurrentThreadID()
 	{
@@ -264,7 +269,7 @@ namespace YXL
 		}
 		static void WriteNullFile(CStr& fileName) 
 		{
-			FILE *f = fopen(_S(fileName), "w"); 
+			FILE *f = fopen(fileName.c_str(), "w");
 			fclose(f); 
 		}
 		static vecS loadStrList(CStr &fName);
@@ -308,6 +313,19 @@ namespace YXL
 			data.resize(size);
 			fin.read(reinterpret_cast<char*>(&data[0]), size);
 			fin.close();
+			return true;
+		}
+
+		static bool WriteFileContentBinary(const std::string& filepath, const std::string& data)
+		{
+			std::ofstream fout(filepath, std::ios::binary);
+			if (false == fout.good())
+			{
+				fout.close();
+				return false;
+			}
+			fout.write(data.data(), data.length());
+			fout.close();
 			return true;
 		}
 
@@ -384,7 +402,7 @@ namespace YXL
 		{
 			if (filePath.size() == 0)
 				return false;
-			return  GetFileAttributesA(_S(filePath)) != INVALID_FILE_ATTRIBUTES;
+			return  GetFileAttributesA(filePath.c_str()) != INVALID_FILE_ATTRIBUTES;
 		}
 		//FilesExist("./*.jpg")
 		static bool FilesExist(CStr& fileW)
@@ -401,7 +419,7 @@ namespace YXL
 			std::string str = strPath.substr(0, i + 1);
 
 			WIN32_FIND_DATAA  wfd;
-			HANDLE hFind = FindFirstFileA(_S(str), &wfd);
+			HANDLE hFind = FindFirstFileA(str.c_str(), &wfd);
 			bool rValue = (hFind != INVALID_HANDLE_VALUE) && (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
 			FindClose(hFind);
 			return rValue;
@@ -470,7 +488,7 @@ namespace YXL
 			if (filePath.size() == 0)
 				return false;
 
-			QFile file(QString::fromLocal8Bit(_S(filePath)));
+			QFile file(QString::fromLocal8Bit(filePath.c_str()));
 			return file.exists();
 		}
 		static inline bool FilesExist(CStr& fileW)
@@ -487,7 +505,7 @@ namespace YXL
 				;
 			std::string str = strPath.substr(0, i + 1);
 
-			QDir dir(QString::fromLocal8Bit(_S(str)));
+			QDir dir(QString::fromLocal8Bit(str.c_str()));
 			return dir.exists();
 		}
 
@@ -499,7 +517,7 @@ namespace YXL
 		static inline void SetWkDir(CStr& dir)
 		{
 			QDir tmp;
-			tmp.setCurrent(QString::fromLocal8Bit(_S(dir)));
+			tmp.setCurrent(QString::fromLocal8Bit(dir.c_str()));
 		}
 
 		static bool MkDir(CStr&  path);
@@ -511,7 +529,7 @@ namespace YXL
 		static void RmFolder(CStr& dir)
 		{
 			QDir tmp;
-			tmp.rmdir(QString::fromLocal8Bit(_S(dir)));
+			tmp.rmdir(QString::fromLocal8Bit(dir.c_str()));
 		}
 		static void CleanFolder(CStr& dir, bool subFolder = false);
 
@@ -520,12 +538,12 @@ namespace YXL
 		static bool Copy(CStr &src, CStr &dst)
 		{
 			QFile f;
-			return f.copy(QString::fromLocal8Bit(_S(src)), QString::fromLocal8Bit(_S(dst)));
+			return f.copy(QString::fromLocal8Bit(src.c_str()), QString::fromLocal8Bit(dst.c_str()));
 		}
 		static bool Move(CStr &src, CStr &dst)
 		{
 			QFile f;
-			return f.copy(QString::fromLocal8Bit(_S(src)), QString::fromLocal8Bit(_S(dst)));
+			return f.copy(QString::fromLocal8Bit(src.c_str()), QString::fromLocal8Bit(dst.c_str()));
 		}
 		static bool Move2Dir(CStr &srcW, CStr dstDir);
 		static bool Copy2Dir(CStr &srcW, CStr dstDir);
@@ -542,33 +560,56 @@ namespace YXL
 #ifdef _YXL_PARAM_PARSER_
 namespace YXL
 {
-	typedef bool(*CmdLineParserCallback)(const std::string& name, const std::string& val);
-	//argv: -name=val
-	/*
-	std::multimap<std::string, std::string> params;
-	bool ParserCallback(const std::string& name, const std::string& val)
+	namespace CMD
 	{
-	params.insert(std::make_pair(name, val));
-	return true;
-	}
-	CmdLineParser(argc, argv, ParserCallback);
-	*/
-	inline void CmdLineParser(int argc, char** argv, CmdLineParserCallback callback)
-	{
-		for (int i(1); i < argc; ++i)
+		typedef bool(*CmdLineParserCallback)(const std::string& name, const std::string& val);
+		//argv: -name=val
+		/*
+		std::multimap<std::string, std::string> params;
+		bool ParserCallback(const std::string& name, const std::string& val)
 		{
-			std::string param = argv[i];
-			auto pos = param.find('=');
-			std::string name = "";
-			std::string val = "";
-			if (pos != std::string::npos)
+		params.insert(std::make_pair(name, val));
+		return true;
+		}
+		CmdLineParser(argc, argv, ParserCallback);
+
+		or
+
+		std::map < std::string, std::string > params;
+		CmdLineParser(argc, argv, [&params](std::string& key, std::string& val) {params[key]=val;});
+
+		*/
+		template <typename Callback> 
+		void CmdLineParser(int argc, char** argv, Callback callback)
+		{
+			for (int i(1); i < argc; ++i)
 			{
-				name = param.substr(0, pos);
-				val = param.substr(pos + 1, param.length() - pos - 1);
+				std::string param = argv[i];
+				auto pos = param.find('=');
+				std::string name = "";
+				std::string val = "";
+				if (pos != std::string::npos)
+				{
+					name = param.substr(0, pos);
+					val = param.substr(pos + 1, param.length() - pos - 1);
+				}
+				else
+					name = param;
+				callback(name, val);
 			}
-			else
-				name = param;
-			callback(name, val);
+		}
+
+		inline std::map<std::string, std::string> ParseCmdLine(int argc, char** argv)
+		{
+			std::map<std::string, std::string> ret;
+			CmdLineParser(argc, argv, [&ret](std::string& key, std::string& val) {ret[key] = val; });
+			return ret;
+		}
+		inline std::map<std::string, std::vector<std::string> > ParseCmdLineDuplicate(int argc, char** argv)
+		{
+			std::map<std::string, std::vector<std::string> > ret;
+			CmdLineParser(argc, argv, [&ret](std::string& key, std::string& val) {ret[key].push_back(val); });
+			return ret;
 		}
 	}
 }
@@ -1149,24 +1190,27 @@ namespace YXL
 #ifdef _YXL_TRANSFORM_
 namespace YXL
 {
-	template<typename type> void Cross(type* v, const type* v0, const type* v1)
+	namespace Vec
 	{
-		v[0] = v0[1] * v1[2] - v0[2] * v1[1];
-		v[1] = v0[2] * v1[0] - v0[0] * v1[2];
-		v[2] = v0[0] * v1[1] - v0[1] * v1[0];
-	}
-	template<int len, typename type> type Dot(const type* v0, const type* v1)
-	{
-		type ret = 0;
-		for (int i(len); i--;)
-			ret += v0[i] * v1[i];
-		return ret;
-	}
-	template<int len, typename type> void Normalize(type* v, const type* v0)
-	{
-		type norm = static_cast<type>(1) / sqrt(Dot<len>(v0, v0));
-		for (int i(len); i--; )
-			v[i] = v0[i] * norm;
+		template<typename type> void Cross(type* v, const type* v0, const type* v1)
+		{
+			v[0] = v0[1] * v1[2] - v0[2] * v1[1];
+			v[1] = v0[2] * v1[0] - v0[0] * v1[2];
+			v[2] = v0[0] * v1[1] - v0[1] * v1[0];
+		}
+		template<int len, typename type> type Dot(const type* v0, const type* v1)
+		{
+			type ret = 0;
+			for (int i(len); i--;)
+				ret += v0[i] * v1[i];
+			return ret;
+		}
+		template<int len, typename type> void Normalize(type* v, const type* v0)
+		{
+			type norm = static_cast<type>(1) / sqrt(Dot<len>(v0, v0));
+			for (int i(len); i--; )
+				v[i] = v0[i] * norm;
+		}
 	}
 
 	namespace Quat
@@ -1174,8 +1218,8 @@ namespace YXL
 		template<typename type> void Rotate(type* out, const type* v, const type* quat)
 		{
 			float a[3], b[3];
-			Cross(a, quat, v);
-			Cross(b, quat, a);
+			Vec::Cross(a, quat, v);
+			Vec::Cross(b, quat, a);
 			out[0] = v[0] + static_cast<type>(2)*(a[0] * quat[3] + b[0]);
 			out[1] = v[1] + static_cast<type>(2)*(a[1] * quat[3] + b[1]);
 			out[2] = v[2] + static_cast<type>(2)*(a[2] * quat[3] + b[2]);
@@ -1183,10 +1227,10 @@ namespace YXL
 		template<typename type> void ToQuaternion(type* out, const type* axis, const type angle_degree)
 		{
 			type angle = angle_degree*(3.1415926*0.5 / 180);
-			type c = cos(angle);
-			type s = sin(angle);
+			type c = std::cos(angle);
+			type s = std::sin(angle);
 
-			type norm = static_cast<type>(1) / Dot<3>(axis, axis);
+			type norm = static_cast<type>(1) / Vec::Dot<3>(axis, axis);
 
 			out[0] = axis[0] * norm*s;
 			out[1] = axis[1] * norm*s;
@@ -1238,14 +1282,14 @@ namespace YXL
 		template<typename type> void LookAt(type* ret, type* eye, type* at, type* up)
 		{
 			type f[] = { at[0] - eye[0], at[1] - eye[1], at[2] - eye[2] };
-			Normalize<3>(f, f);
+			Vec::Normalize<3>(f, f);
 
 			type s[3];
-			Cross(s, f, up);
-			Normalize<3>(s, s);
+			Vec::Cross(s, f, up);
+			Vec::Normalize<3>(s, s);
 
 			type u[3];
-			Cross(u, s, f);
+			Vec::Cross(u, s, f);
 
 			ret[0] = s[0];
 			ret[1] = s[1];
@@ -1259,9 +1303,9 @@ namespace YXL
 			ret[9] = f[1];
 			ret[10] = f[2];
 			ret[11] = 0;
-			ret[12] = -Dot<3>(s, eye);
-			ret[13] = -Dot<3>(u, eye);
-			ret[14] = Dot<3>(f, eye);
+			ret[12] = -Vec::Dot<3>(s, eye);
+			ret[13] = -Vec::Dot<3>(u, eye);
+			ret[14] = Vec::Dot<3>(f, eye);
 			ret[15] = 1.0f;
 
 			/*float data[] = {
@@ -1332,7 +1376,7 @@ namespace YXL
 		template<typename type> void RotationFromQuaternion(type* ret, type* quat)
 		{
 			type q[4];
-			Normalize<4, type>(q, quat);
+			Vec::Normalize<4, type>(q, quat);
 
 			type xy = q[0]*q[1];
 			type yz = q[1]*q[2];
@@ -1468,10 +1512,10 @@ namespace YXL
 			c[1] = vertices[idx[2] + 1] - vertices[idx[0] + 1];
 			c[2] = vertices[idx[2] + 2] - vertices[idx[0] + 2];
 			
-			l2[0] = Dot<3>(a, a);
-			l2[1] = Dot<3>(b, b);
-			l2[2] = Dot<3>(c, c);
-			Cross(face_normal, a, b);
+			l2[0] = Vec::Dot<3>(a, a);
+			l2[1] = Vec::Dot<3>(b, b);
+			l2[2] = Vec::Dot<3>(c, c);
+			Vec::Cross(face_normal, a, b);
 
 			a[0] = 1.f / (l2[0] * l2[2]);
 			a[1] = 1.f / (l2[0] * l2[1]);
@@ -1491,17 +1535,21 @@ namespace YXL
 			normals[tmp + 2] += face_normal[2] * a[2];
 		}
 		for (int i(v_cnt); i--;)
-			Normalize<3>(normals + i * 3, normals + i * 3);
+			Vec::Normalize<3>(normals + i * 3, normals + i * 3);
 	}
 
 #ifdef _WITH_OPENCV_
 	inline cv::Mat ComputeNormal(cv::Mat vertices, cv::Mat tris, bool is_reverse_normal)
 	{
+		if (vertices.channels() != 3 || false == (vertices.depth() == CV_32F || vertices.depth() == CV_64F) || tris.type() != CV_32SC3)
+			return cv::Mat();
 		cv::Mat normals = cv::Mat(vertices.size(), vertices.type());
-		ComputeNormal((float*)normals.data, (float*)vertices.data, vertices.rows, (int*)tris.data, tris.rows, is_reverse_normal);
+		if(vertices.depth()==CV_32F)
+			ComputeNormal((float*)normals.data, (float*)vertices.data, vertices.rows, (int*)tris.data, tris.rows, is_reverse_normal);
+		else
+			ComputeNormal((double*)normals.data, (double*)vertices.data, vertices.rows, (int*)tris.data, tris.rows, is_reverse_normal);
 		return normals;
 	}
-
 #endif
 }
 #endif
@@ -1511,6 +1559,44 @@ namespace YXL
 {
 	cv::Mat LIB_YXL_HELPER FilterImage(cv::Mat img, cv::Mat kernel, cv::Mat mask = cv::Mat());
 }
+#endif
+
+#ifdef _YXL_HASH_
+namespace YXL
+{
+	namespace Hash
+	{
+		std::string LIB_YXL_HELPER SHA1(CStr& str);
+		//sha2
+		std::string LIB_YXL_HELPER SHA224(CStr& str);
+		std::string LIB_YXL_HELPER SHA256(CStr& str);
+		std::string LIB_YXL_HELPER SHA384(CStr& str);
+		std::string LIB_YXL_HELPER SHA512(CStr& str);
+
+		std::string LIB_YXL_HELPER MD5(CStr& str);
+	}
+}
+#endif
+
+#ifdef _YXL_CIPHER_
+namespace YXL
+{
+	namespace Cipher
+	{
+		/* key length */
+		const int AES_128 = 16;
+		const int AES_192 = 24;
+		const int AES_256 = 32;
+
+		//ECB (Electronic Code Book) mode
+		void LIB_YXL_HELPER AESCipherECB(CStr& str, CStr& key, std::string& res);
+		//ECB (Electronic Code Book) mode
+		void LIB_YXL_HELPER AESDecryptECB(CStr& str, CStr& key, std::string& res);
+
+		//TODO: CBC, CFB, OFB mode
+	}
+}
+
 #endif
 
 #ifdef _YXL_GLFW_
@@ -1565,5 +1651,6 @@ namespace YXL
 	};
 }
 #endif
+
 
 #endif
