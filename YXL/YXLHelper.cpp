@@ -2773,6 +2773,529 @@ namespace YXL
 }
 #endif
 
+#ifdef _YXL_CRYPTO_
+#include "cryptopp/rsa.h"
+#include "cryptopp/randpool.h"
+#include "cryptopp/modes.h"
+#include "cryptopp/hex.h"
+#include "cryptopp/files.h"
+#include "cryptopp/channels.h"
+#include "cryptopp/sha.h"
+#include "cryptopp/sha3.h"
+#include "cryptopp/tiger.h"
+#include "cryptopp/ripemd.h"
+#include "cryptopp/whrlpool.h"
+#include "cryptopp/md5.h"
+#include "cryptopp/hmac.h"
+#include "cryptopp/base64.h"
+namespace YXL
+{
+	namespace Crypt
+	{
+		using namespace CryptoPP;
+		OFB_Mode<AES>::Encryption s_globalRNG;
+		bool _is_init = false;
+
+		RandomNumberGenerator & GlobalRNG()
+		{
+			return dynamic_cast<RandomNumberGenerator&>(s_globalRNG);
+		}
+
+		void Init()
+		{
+			std::string seed = GetCurTime();
+			seed.resize(16);
+			OFB_Mode<AES>::Encryption& aesg = dynamic_cast<OFB_Mode<AES>::Encryption&>(GlobalRNG());
+			aesg.SetKeyWithIV((CryptoPP::byte *)seed.data(), 16, (CryptoPP::byte *)seed.data());
+			_is_init = true;
+		}
+
+		void RSAGenerateKey(std::string& private_key, std::string& public_key, CStr& seed, const unsigned int key_len)
+		{
+			// DEREncode() changed to Save() at Issue 569.
+			RandomPool randPool;
+			randPool.IncorporateEntropy((const CryptoPP::byte *)seed.c_str(), seed.length());
+
+			RSAES_OAEP_SHA_Decryptor priv(randPool, key_len);
+			HexEncoder privFile(new StringSink(private_key));
+			priv.AccessMaterial().Save(privFile);
+			privFile.MessageEnd();
+
+			RSAES_OAEP_SHA_Encryptor pub(priv);
+			HexEncoder pubFile(new StringSink(public_key));
+			pub.AccessMaterial().Save(pubFile);
+			pubFile.MessageEnd();
+		}
+		void RSAEncrypt(std::string& out, CStr& message, CStr& public_key, CStr& seed)
+		{
+			StringSource pub_key(public_key, true, new HexDecoder);
+			RSAES_OAEP_SHA_Encryptor pub(pub_key);
+
+			RandomPool randPool;
+			randPool.IncorporateEntropy((const CryptoPP::byte *)seed.c_str(), seed.length());
+
+			StringSource(message, true, new PK_EncryptorFilter(randPool, pub, new HexEncoder(new StringSink(out))));
+		}
+		void RSADecrypt(std::string& out, CStr& ciphertext, CStr& private_key)
+		{
+			if (_is_init == false)
+				Init();
+
+			StringSource privFile(private_key, true, new HexDecoder);
+			RSAES_OAEP_SHA_Decryptor priv(privFile);
+			StringSource(ciphertext.c_str(), true, new HexDecoder(new PK_DecryptorFilter(GlobalRNG(), priv, new StringSink(out))));
+		}
+
+		void RSAGenerateKey_File(CStr& fn_private_key, CStr& fn_public_key, CStr& seed, const unsigned int key_len)
+		{
+			// DEREncode() changed to Save() at Issue 569.
+			RandomPool randPool;
+			randPool.IncorporateEntropy((const CryptoPP::byte *)seed.c_str(), seed.length());
+
+			RSAES_OAEP_SHA_Decryptor priv(randPool, key_len);
+			HexEncoder privFile(new FileSink(fn_private_key.c_str()));
+			priv.AccessMaterial().Save(privFile);
+			privFile.MessageEnd();
+
+			RSAES_OAEP_SHA_Encryptor pub(priv);
+			HexEncoder pubFile(new FileSink(fn_public_key.c_str()));
+			pub.AccessMaterial().Save(pubFile);
+			pubFile.MessageEnd();
+		}
+		void RSAEncrypt_File(CStr& fn_out, CStr& fn_message, CStr& public_key, CStr& seed)
+		{
+			StringSource pub_key(public_key, true, new HexDecoder);
+			RSAES_OAEP_SHA_Encryptor pub(pub_key);
+
+			RandomPool randPool;
+			randPool.IncorporateEntropy((const CryptoPP::byte *)seed.c_str(), seed.length());
+
+			FileSource(fn_message.c_str(), true, new PK_EncryptorFilter(randPool, pub, new HexEncoder(new FileSink(fn_out.c_str()))));
+		}
+		void RSADecrypt_File(CStr& fn_out, CStr& fn_ciphertext, CStr& private_key)
+		{
+			StringSource privFile(private_key, true, new HexDecoder);
+			RSAES_OAEP_SHA_Decryptor priv(privFile);
+			FileSource(fn_ciphertext.c_str(), true, new HexDecoder(new PK_DecryptorFilter(GlobalRNG(), priv, new FileSink(fn_out.c_str()))));
+		}
+
+		void RSASign(std::string& signature, CStr& message, CStr& private_key)
+		{
+			if (_is_init == false)
+				Init();
+			StringSource privFile(private_key, true, new HexDecoder);
+			RSASS<PKCS1v15, CryptoPP::SHA1>::Signer priv(privFile);
+			StringSource f(message, true, new SignerFilter(GlobalRNG(), priv, new HexEncoder(new StringSink(signature))));
+		}
+		bool RSAVerify(CStr& _signature, CStr& message, CStr& public_key)
+		{
+			StringSource pubFile(public_key, true, new HexDecoder);
+			RSASS<PKCS1v15, CryptoPP::SHA1>::Verifier pub(pubFile);
+
+			StringSource signatureFile(_signature, true, new HexDecoder);
+			if (signatureFile.MaxRetrievable() != pub.SignatureLength())
+				return false;
+			SecByteBlock signature(pub.SignatureLength());
+			signatureFile.Get(signature, signature.size());
+
+			SignatureVerificationFilter *verifierFilter = new SignatureVerificationFilter(pub);
+			verifierFilter->Put(signature, pub.SignatureLength());
+			StringSource f(message, true, verifierFilter);
+
+			return verifierFilter->GetLastResult();
+		}
+
+		void RSASign_File(std::string& signature, CStr& fn_message, CStr& private_key)
+		{
+			StringSource privFile(private_key, true, new HexDecoder);
+			RSASS<PKCS1v15, CryptoPP::SHA1>::Signer priv(privFile);
+			FileSource f(fn_message.c_str(), true, new SignerFilter(GlobalRNG(), priv, new HexEncoder(new StringSink(signature))));
+		}
+		bool RSAVerify_File(CStr& _signature, CStr& fn_message, CStr& public_key)
+		{
+			StringSource pubFile(public_key, true, new HexDecoder);
+			RSASS<PKCS1v15, CryptoPP::SHA1>::Verifier pub(pubFile);
+
+			StringSource signatureFile(_signature, true, new HexDecoder);
+			if (signatureFile.MaxRetrievable() != pub.SignatureLength())
+				return false;
+			SecByteBlock signature(pub.SignatureLength());
+			signatureFile.Get(signature, signature.size());
+
+			SignatureVerificationFilter *verifierFilter = new SignatureVerificationFilter(pub);
+			verifierFilter->Put(signature, pub.SignatureLength());
+			FileSource f(fn_message.c_str(), true, verifierFilter);
+
+			return verifierFilter->GetLastResult();
+		}
+
+		//digest
+		template <typename Filter, typename Src, typename In> std::string Digest(const In& in)
+		{
+			Filter sha;
+			auto filter = new HashFilter(sha);
+
+			member_ptr<ChannelSwitch> channelSwitch(new ChannelSwitch);
+			channelSwitch->AddDefaultRoute(*filter);
+			Src(in, true, channelSwitch.release());
+
+			std::string out;
+			HexEncoder encoder(new StringSink(out), false);
+			filter->TransferAllTo(encoder);
+
+			return out;
+		}
+
+		std::string MD5(CStr& str)
+		{
+			return Digest<CryptoPP::MD5, StringSource>(str);
+		}
+		std::string SHA1(CStr& str)
+		{
+			return Digest<CryptoPP::SHA1, StringSource>(str);
+		}
+		std::string SHA224(CStr& str)
+		{
+			return Digest<CryptoPP::SHA224, StringSource>(str);
+		}
+		std::string SHA256(CStr& str)
+		{
+			return Digest<CryptoPP::SHA256, StringSource>(str);
+		}
+		std::string SHA384(CStr& str)
+		{
+			return Digest<CryptoPP::SHA384, StringSource>(str);
+		}
+		std::string SHA512(CStr& str)
+		{
+			return Digest<CryptoPP::SHA512, StringSource>(str);
+		}
+		std::string SHA3_256(CStr& str)
+		{
+			return Digest<CryptoPP::SHA3_256, StringSource>(str);
+		}
+		std::string SHA3_384(CStr& str)
+		{
+			return Digest<CryptoPP::SHA3_384, StringSource>(str);
+		}
+		std::string SHA3_512(CStr& str)
+		{
+			return Digest<CryptoPP::SHA3_512, StringSource>(str);
+		}
+		std::string Tiger(CStr& str)
+		{
+			return Digest<CryptoPP::Tiger, StringSource>(str);
+		}
+		std::string Ripemd128(CStr& str)
+		{
+			return Digest<CryptoPP::RIPEMD128, StringSource>(str);
+		}
+		std::string Ripemd160(CStr& str)
+		{
+			return Digest<CryptoPP::RIPEMD160, StringSource>(str);
+		}
+		std::string Whirlpool(CStr& str)
+		{
+			return Digest<CryptoPP::Whirlpool, StringSource>(str);
+		}
+		std::string HMAC(CStr& hex_key, CStr& str)
+		{
+			member_ptr<MessageAuthenticationCode> mac;
+			if ("" == hex_key)
+			{
+				//std::cerr << "Computing HMAC/SHA1 value for self test.\n";
+				mac.reset(NewIntegrityCheckingMAC());
+			}
+			else
+			{
+				std::string decodedKey;
+				StringSource(hex_key, true, new HexDecoder(new StringSink(decodedKey)));
+				mac.reset(new CryptoPP::HMAC<CryptoPP::SHA1>((const CryptoPP::byte *)decodedKey.data(), decodedKey.size()));
+			}
+			std::string out;
+			StringSource(str, true, new HashFilter(*mac, new HexEncoder(new StringSink(out))));
+			return out;
+		}
+
+		std::string MD5_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::MD5, FileSource>(in);
+		}
+		std::string SHA1_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::SHA1, FileSource>(in);
+		}
+		std::string SHA224_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::SHA224, FileSource>(in);
+		}
+		std::string SHA256_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::SHA256, FileSource>(in);
+		}
+		std::string SHA384_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::SHA384, FileSource>(in);
+		}
+		std::string SHA512_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::SHA512, FileSource>(in);
+		}
+		std::string SHA3_256_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::SHA3_256, FileSource>(in);
+		}
+		std::string SHA3_384_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::SHA3_384, FileSource>(in);
+		}
+		std::string SHA3_512_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::SHA3_512, FileSource>(in);
+		}
+		std::string Tiger_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::Tiger, FileSource>(in);
+		}
+		std::string Ripemd128_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::RIPEMD128, FileSource>(in);
+		}
+		std::string Ripemd160_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::RIPEMD160, FileSource>(in);
+		}
+		std::string Whirlpool_File(CStr& fn_in)
+		{
+			auto in = fn_in.c_str();
+			return Digest<CryptoPP::Whirlpool, FileSource>(in);
+		}
+		std::string HMAC_File(CStr& hex_key, CStr& fn_in)
+		{
+			member_ptr<MessageAuthenticationCode> mac;
+			if ("" == hex_key)
+			{
+				//std::cerr << "Computing HMAC/SHA1 value for self test.\n";
+				mac.reset(NewIntegrityCheckingMAC());
+			}
+			else
+			{
+				std::string decodedKey;
+				StringSource(hex_key, true, new HexDecoder(new StringSink(decodedKey)));
+				mac.reset(new CryptoPP::HMAC<CryptoPP::SHA1>((const CryptoPP::byte *)decodedKey.data(), decodedKey.size()));
+			}
+			std::string out;
+			FileSource(fn_in.c_str(), true, new HashFilter(*mac, new HexEncoder(new StringSink(out))));
+			return out;
+		}
+
+		//AES
+		SecByteBlock HexDecodeString(CStr& hex)
+		{
+			StringSource ss(hex, true, new HexDecoder);
+			SecByteBlock result((size_t)ss.MaxRetrievable());
+			ss.Get(result, result.size());
+			return result;
+		}
+
+		template<typename Method, typename Src, typename Dest, typename Out, typename In>
+		void Stream_Encrypt_Decrypt(Out& out, const In& in, CStr& hexKey, CStr& hexIV)
+		{
+			try
+			{
+				SecByteBlock key = HexDecodeString(hexKey);
+				SecByteBlock iv = HexDecodeString(hexIV);
+				Method aes(key, key.size(), iv);
+				Src(in, true, new StreamTransformationFilter(aes, new Dest(out)));
+			}
+			catch (const Exception& e)
+			{
+				std::cout << e.GetWhat() << std::endl;
+				throw e;
+			}
+		}
+		template<typename Method, typename Src, typename Dest, typename Out, typename In>
+		void Stream_Encrypt_Decrypt(Out& out, const In& in, CStr& hexKey)
+		{
+			try
+			{
+				SecByteBlock key = HexDecodeString(hexKey);
+				Method aes(key, key.size());
+				Src(in, true, new StreamTransformationFilter(aes, new Dest(out)));
+			}
+			catch (const Exception& e)
+			{
+				std::cout << e.GetWhat() << std::endl;
+				throw e;
+			}
+		}
+		void AESEncryptCFB(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv)
+		{
+			Stream_Encrypt_Decrypt<CFB_Mode<AES>::Encryption, StringSource, StringSink>(out, str, hex_key, hex_iv);
+		}
+		void AESDecryptCFB(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv)
+		{
+			Stream_Encrypt_Decrypt<CFB_Mode<AES>::Decryption, StringSource, StringSink>(out, str, hex_key, hex_iv);
+		}
+		void AESEncryptOFB(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv)
+		{
+			Stream_Encrypt_Decrypt<OFB_Mode<AES>::Encryption, StringSource, StringSink>(out, str, hex_key, hex_iv);
+		}
+		void AESDecryptOFB(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv)
+		{
+			Stream_Encrypt_Decrypt<OFB_Mode<AES>::Decryption, StringSource, StringSink>(out, str, hex_key, hex_iv);
+		}
+		void AESEncryptCTR(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv)
+		{
+			Stream_Encrypt_Decrypt<CTR_Mode<AES>::Encryption, StringSource, StringSink>(out, str, hex_key, hex_iv);
+		}
+		void AESDecryptCTR(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv)
+		{
+			Stream_Encrypt_Decrypt<CTR_Mode<AES>::Decryption, StringSource, StringSink>(out, str, hex_key, hex_iv);
+		}
+		void AESEncryptECB(std::string& out, CStr& str, CStr& hex_key)
+		{
+			Stream_Encrypt_Decrypt<ECB_Mode<AES>::Encryption, StringSource, StringSink>(out, str, hex_key);
+		}
+		void AESDecryptECB(std::string& out, CStr& str, CStr& hex_key)
+		{
+			Stream_Encrypt_Decrypt<ECB_Mode<AES>::Decryption, StringSource, StringSink>(out, str, hex_key);
+		}
+		void AESEncryptCBC(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv)
+		{
+			Stream_Encrypt_Decrypt<CBC_Mode<AES>::Encryption, StringSource, StringSink>(out, str, hex_key, hex_iv);
+		}
+		void AESDecryptCBC(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv)
+		{
+			Stream_Encrypt_Decrypt<CBC_Mode<AES>::Decryption, StringSource, StringSink>(out, str, hex_key, hex_iv);
+		}
+
+		void AESEncryptCFB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			Stream_Encrypt_Decrypt<CFB_Mode<AES>::Encryption, FileSource, FileSink>(out, in, hex_key, hex_iv);
+		}
+		void AESDecryptCFB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			Stream_Encrypt_Decrypt<CFB_Mode<AES>::Decryption, FileSource, FileSink>(out, in, hex_key, hex_iv);
+		}
+		void AESEncryptOFB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			Stream_Encrypt_Decrypt<OFB_Mode<AES>::Encryption, FileSource, FileSink>(out, in, hex_key, hex_iv);
+		}
+		void AESDecryptOFB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			Stream_Encrypt_Decrypt<OFB_Mode<AES>::Decryption, FileSource, FileSink>(out, in, hex_key, hex_iv);
+		}
+		void AESEncryptCTR_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			Stream_Encrypt_Decrypt<CTR_Mode<AES>::Encryption, FileSource, FileSink>(out, in, hex_key, hex_iv);
+		}
+		void AESDecryptCTR_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			Stream_Encrypt_Decrypt<CTR_Mode<AES>::Decryption, FileSource, FileSink>(out, in, hex_key, hex_iv);
+		}
+		void AESEncryptECB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			Stream_Encrypt_Decrypt<ECB_Mode<AES>::Encryption, FileSource, FileSink>(out, in, hex_key);
+		}
+		void AESDecryptECB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			Stream_Encrypt_Decrypt<ECB_Mode<AES>::Decryption, FileSource, FileSink>(out, in, hex_key);
+		}
+		void AESEncryptCBC_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			Stream_Encrypt_Decrypt<CBC_Mode<AES>::Encryption, FileSource, FileSink>(out, in, hex_key, hex_iv);
+		}
+		void AESDecryptCBC_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			Stream_Encrypt_Decrypt<CBC_Mode<AES>::Decryption, FileSource, FileSink>(out, in, hex_key, hex_iv);
+		}
+
+		//for hex & base64
+		template<typename Method, typename Src, typename Dest, typename Out, typename In> void EncodeDecode(Out& out, const In& in)
+		{
+			Src(in, true, new Method(new Dest(out)));
+		}
+
+		//hex
+		void HexEncode(std::string& out, CStr& str)
+		{
+			EncodeDecode<HexEncoder, StringSource, StringSink>(out, str);
+		}
+		void HexDecode(std::string& out, CStr& str)
+		{
+			EncodeDecode<HexDecoder, StringSource, StringSink>(out, str);
+		}
+		void HexEncode_File(CStr& fn_in, CStr& fn_out)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			EncodeDecode<HexEncoder, FileSource, FileSink>(out, in);
+		}
+		void HexDecode_File(CStr& fn_in, CStr& fn_out)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			EncodeDecode<HexDecoder, FileSource, FileSink>(out, in);
+		}
+
+		//base64
+		void Base64Encode(std::string& out, CStr& str)
+		{
+			EncodeDecode<Base64Encoder, StringSource, StringSink>(out, str);
+		}
+		void Base64Decode(std::string& out, CStr& str)
+		{
+			EncodeDecode<Base64Decoder, StringSource, StringSink>(out, str);
+		}
+		void Base64Encode_File(CStr& fn_in, CStr& fn_out)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			EncodeDecode<Base64Encoder, FileSource, FileSink>(out, in);
+		}
+		void Base64Decode_File(CStr& fn_in, CStr& fn_out)
+		{
+			auto in = fn_in.c_str();
+			auto out = fn_out.c_str();
+			EncodeDecode<Base64Decoder, FileSource, FileSink>(out, in);
+		}
+	}
+}
+#endif
+
 #ifdef _YXL_GLFW_
 namespace YXL
 {
