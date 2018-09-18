@@ -1,3 +1,9 @@
+# vs configuration
+set "C++/output/object name" to 
+```C
+$(IntDir)$(Configuration)%(RelativeDir)
+```
+
 # outlines
 - [YXLJsonReader](#yxljsonreader)
 - [YXLHelper](#yxlhelper)

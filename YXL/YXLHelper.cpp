@@ -672,6 +672,334 @@ namespace YXL
 }
 #endif
 
+#ifdef _YXL_IMG_CODEC_
+#include "image/stb_image/stb_image.h"
+#include "image/stb_image/stb_image_write.h"
+#include "image/webp/webp/encode.h"
+#include "image/webp/webp/decode.h"
+namespace YXL
+{
+	namespace Image
+	{
+		void SwapRBChannel(std::shared_ptr<unsigned char>& data, const int w, const int h, const int ch)
+		{
+			if (ch < 3)
+				return;
+			const int len = w*h*ch;
+			auto ptr = data.get();
+			for (int i(0); i < len; i += ch)
+				std::swap(ptr[i], ptr[i + 2]);
+		}
+
+		void DecodePNG(std::shared_ptr<unsigned char>& data, int& w, int& h, const int req_ch, CStr& in_data, const bool is_rgb)
+		{
+			int ch=0;
+			data = nullptr;
+			w = 0;
+			h = 0;
+			auto _data = stbi_load_from_memory(in_data.c_str(), in_data.length(), &w, &h, &ch, req_ch);
+			if (_data == nullptr)
+				return;
+			if (req_ch == ch || (req_ch == 4 && ch == 3))
+				data = std::shared_ptr<unsigned char>(_data);
+			else
+				std::cout <<__FILE__<<"["<<__FUNCTION__<< "]: something wrong..." << std::endl;
+
+			if (req_ch >= 3 && is_rgb==false)
+				SwapRBChannel(data, w, h, req_ch);
+		}
+		void EncodePNG(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h, const int ch, const bool is_rgb)
+		{
+			if (ch >= 3 && is_rgb==false)
+			{
+				std::shared_ptr<unsigned char> tmp(new unsigned char[w*h * ch]);
+				memcpy(tmp.get(), img, w*h * ch);
+				SwapRBChannel(tmp, w, h, ch);
+				unsigned char *data = stbi_write_png_to_mem(tmp.get(), w*ch, w, h, ch, &out_data_size);
+				out_data = std::shared_ptr<unsigned char>(data);
+			}
+			else
+			{
+				unsigned char *data = stbi_write_png_to_mem(img, w*ch, w, h, ch, &out_data_size);
+				out_data = std::shared_ptr<unsigned char>(data);
+			}
+		}
+
+#define IMPL_ALL(marco) \
+		marco(RGBA, 4, true);\
+		marco(BGRA, 4, false);\
+		marco(RGB, 3, true);\
+		marco(BGR, 3, false);\
+		marco(Grey, 1, false);
+
+#define IMPL_DECODE_FUNC(name, ch, is_rgb) void Decode##name(std::shared_ptr<unsigned char>& data, int& w, int& h, CStr& in_data)\
+		{\
+			DecodePNG(data, w, h, ch, in_data, is_rgb);\
+		}
+
+		IMPL_ALL(IMPL_DECODE_FUNC);
+#undef IMPL_DECODE_FUNC
+
+#define IMPL_ENCODE_FUNC(name, ch, is_rgb) \
+		void EncodePNG_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h)\
+		{\
+			EncodePNG(out_data, out_data_size, img, w, h, ch, is_rgb);\
+		}
+	
+		IMPL_ALL(IMPL_ENCODE_FUNC);
+#undef IMPL_ENCODE_FUNC
+
+
+		void DecodeWebP(std::shared_ptr<unsigned char>& out_data, int& w, int& h, const int req_ch, CStr& in_data, const bool is_rgb)
+		{
+			int _ch = req_ch == 1 ? 3 : req_ch;
+			bool _is_rgb = req_ch == 1 ? true : is_rgb;
+
+			typedef uint8_t* (*decode_func)(const uint8_t* data, size_t data_size, int* width, int* height);
+			decode_func func[] = { WebPDecodeBGR, WebPDecodeBGRA, WebPDecodeRGB, WebPDecodeRGBA };
+
+			const int func_idx = (_is_rgb ? 2 : 0) + (_ch == 3 ? 0 : 1);
+
+			auto ret = func[func_idx](reinterpret_cast<const uint8_t*>(in_data.c_str()), in_data.length(), &w, &h);
+
+			if (req_ch >= 3)
+				out_data = std::shared_ptr<unsigned char>(ret);
+			else
+			{
+				out_data = std::shared_ptr<unsigned char>(new unsigned char[w*h]);
+				auto dst = out_data.get();
+				int len = w*h;
+				for (int i(0), ii(0); i != len; ++i, ii += _ch)
+					dst[i] = ret[ii] * 0.299f + ret[ii + 1] * 0.587f + ret[ii + 2] * 0.114f;
+			}
+		}
+		void EncodeWebP(std::shared_ptr<unsigned char>& out_data, int& out_data_size, 
+			unsigned char* img, const int w, const int h, const int ch, 
+			const bool is_rgb, const float quality)
+		{
+			out_data = nullptr;
+			int _ch = ch;
+			unsigned char* _img = img;
+
+			std::shared_ptr<unsigned char> tmp = nullptr;
+			if (ch == 1)
+			{
+				_ch = 4;
+				tmp = std::shared_ptr<unsigned char>(new unsigned char[w*h*_ch]);
+				auto dst = (int*)tmp.get();
+				auto src = img;
+				const int len = w*h;
+				for(int i(0); i < len; ++i)
+					dst[i]= ((int)(uint32_t)src[i] * 0x010101 | 0xff000000);
+				_img = tmp.get();
+			}
+			
+			typedef size_t(*encode_func)(const uint8_t* rgb, int width, int height, int stride, float quality_factor, uint8_t** output);
+			typedef size_t (*encode_func2)(const uint8_t* rgb, int width, int height, int stride, uint8_t** output);
+			const encode_func func[] = { WebPEncodeBGR, WebPEncodeBGRA, WebPEncodeRGB, WebPEncodeRGBA };
+			const encode_func2 func2[] = { WebPEncodeLosslessBGR, WebPEncodeLosslessBGRA, WebPEncodeLosslessRGB, WebPEncodeLosslessRGBA };
+
+			const int func_idx = (is_rgb ? 2 : 0) + (_ch == 3 ? 0 : 1);
+
+			uint8_t* ptr = nullptr;
+			if (quality < 100.f)
+				out_data_size = func[func_idx](_img, w, h, w*_ch, quality, &ptr);
+			else
+				out_data_size = func2[func_idx](_img, w, h, w*_ch, &ptr);
+
+			if (!out_data_size)
+			{
+				std::cout << __FILE__ << "[" << __FUNCTION__ << "]: something wrong..." << std::endl;
+				return;
+			}
+			out_data = std::shared_ptr<unsigned char>(ptr);
+		}
+
+#define IMPL_DECODE_FUNC_WEBP(name, ch, is_rgb) \
+		void DecodeWebP_##name(std::shared_ptr<unsigned char>& img, int & w, int & h, CStr & in_data)\
+		{\
+			DecodeWebP(img, w, h, ch, in_data, is_rgb);\
+		}
+
+		IMPL_ALL(IMPL_DECODE_FUNC_WEBP);
+#undef IMPL_DECODE_FUNC_WEBP
+
+#define IMPL_ENCODE_FUNC_WEBP(name, ch, is_rgb) \
+		void EncodeWebp_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h, const float quality)\
+		{\
+			EncodeWebP(out_data, out_data_size, img, w, h, ch, is_rgb, quality);\
+		}
+
+		IMPL_ALL(IMPL_ENCODE_FUNC_WEBP);
+#undef IMPL_ENCODE_FUNC_WEBP
+
+#undef IMPL_ALL
+
+		}
+}
+#endif
+
+#ifdef _YXL_MINI_Z_
+#include "miniz/miniz.h"
+namespace YXL
+{
+	namespace Zip
+	{
+		std::map<ZIP_COMPRESSION, mz_uint> _compression=
+		{
+			{ ZIP_COMPRESSION::ZIP_NO_COMPRESSION, MZ_NO_COMPRESSION},
+			{ ZIP_COMPRESSION::ZIP_BEST_SPEED, MZ_BEST_SPEED},
+			{ ZIP_COMPRESSION::ZIP_BEST_COMPRESSION, MZ_BEST_COMPRESSION},
+			{ ZIP_COMPRESSION::ZIP_UBER_COMPRESSION, MZ_UBER_COMPRESSION},
+			{ ZIP_COMPRESSION::ZIP_DEFAULT_LEVEL, MZ_DEFAULT_LEVEL},
+		};
+
+		bool Unzip(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr& zip_content, const bool is_fn_lowercase)
+		{
+			out_files.clear();
+			mz_zip_archive zip_archive;
+			mz_zip_zero_struct(&zip_archive);
+
+			auto status = mz_zip_reader_init_mem(&zip_archive, zip_content.c_str(), zip_content.length(), 0);
+			if (!status)
+				return false;
+			int fileCount = (int)mz_zip_reader_get_num_files(&zip_archive);
+			if (fileCount == 0)
+			{
+				mz_zip_reader_end(&zip_archive);
+				return false;
+			}
+			mz_zip_archive_file_stat file_stat;
+			if (!mz_zip_reader_file_stat(&zip_archive, 0, &file_stat))
+			{
+				mz_zip_reader_end(&zip_archive);
+				return false;
+			}
+			// Get root folder
+			std::string lastDir = "";
+			// Get and print information about each file in the archive.
+			for (int i = 0; i < fileCount; i++)
+			{
+				if (!mz_zip_reader_file_stat(&zip_archive, i, &file_stat))
+					continue;
+				if (mz_zip_reader_is_file_a_directory(&zip_archive, i))
+					continue; // skip directories for now
+							  //string fileName = file_stat.m_filename; // make path relative
+							  //get_filename(fileName);
+				size_t size = 0;
+				auto ret = (char*)mz_zip_reader_extract_to_heap(&zip_archive, i, &size, 0);
+				if (ret)
+				{
+					auto f= std::shared_ptr<File>(new File);
+					f->fn= file_stat.m_filename;
+					if (is_fn_lowercase)
+						std::transform(f->fn.begin(), f->fn.end(), f->fn.begin(), ::tolower);
+					f->data = std::string(ret, ret + size);
+					out_files.insert({ f->fn, f });
+					delete[] ret;
+				}
+			}
+
+			// Close the archive, freeing any resources it was using
+			mz_zip_reader_end(&zip_archive);
+			return true;
+		}
+
+		bool RetrieveFiles(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr & zip_content, const std::vector<std::string>& files_to_get, const bool is_fn_lowercase)
+		{
+			out_files.clear();
+			mz_zip_archive zip_archive;
+			mz_zip_zero_struct(&zip_archive);
+
+			auto status = mz_zip_reader_init_mem(&zip_archive, zip_content.c_str(), zip_content.length(), 0);
+			if (!status)
+				return false;
+			int fileCount = (int)mz_zip_reader_get_num_files(&zip_archive);
+			if (fileCount == 0)
+			{
+				mz_zip_reader_end(&zip_archive);
+				return false;
+			}
+			mz_zip_archive_file_stat file_stat;
+			if (!mz_zip_reader_file_stat(&zip_archive, 0, &file_stat))
+			{
+				mz_zip_reader_end(&zip_archive);
+				return false;
+			}
+			// Get root folder
+			std::string lastDir = "";
+
+			std::map<std::string, int> flags;
+			// Get and print information about each file in the archive.
+			for (int i = 0; i < fileCount; i++)
+			{
+				if (!mz_zip_reader_file_stat(&zip_archive, i, &file_stat))
+					continue;
+				if (std::find(files_to_get.begin(), files_to_get.end(), file_stat.m_filename) == files_to_get.end())
+					continue;
+				size_t size = 0;
+				auto ret = (char*)mz_zip_reader_extract_to_heap(&zip_archive, i, &size, 0);
+				if (ret)
+				{
+					auto f = std::shared_ptr<File>(new File);
+					f->fn = file_stat.m_filename;
+					if (is_fn_lowercase)
+						std::transform(f->fn.begin(), f->fn.end(), f->fn.begin(), ::tolower);
+					f->data = std::string(ret, ret + size);
+					out_files.insert({ f->fn, f });
+					delete[] ret;
+					++flags[f->fn];
+				}
+			}
+
+			// Close the archive, freeing any resources it was using
+			mz_zip_reader_end(&zip_archive);
+
+			return files_to_get.size() == flags.size();
+		}
+
+		bool Zip(std::shared_ptr<char>& zip, size_t& zip_size, std::multimap<std::string, std::shared_ptr<File>>& files, const ZIP_COMPRESSION compression)
+		{
+			zip_size = 0;
+			mz_zip_archive zip_archive;
+			mz_zip_zero_struct(&zip_archive);
+
+			auto status = mz_zip_writer_init_heap(&zip_archive, 0, 0);
+			if (!status)
+				return false;
+			for (auto& file : files)
+				mz_zip_writer_add_mem(&zip_archive, file.first.c_str(), file.second->data.c_str(), file.second->data.length(), _compression[compression]);
+			char* _zip = nullptr;
+			mz_bool ret = mz_zip_writer_finalize_heap_archive(&zip_archive, (void**)&_zip, &zip_size);
+			ret &= mz_zip_writer_end(&zip_archive);
+			zip = std::shared_ptr<char>(_zip);
+			return ret;
+		}
+
+		bool ZipAddFile(std::shared_ptr<char>& zip, size_t& zip_size, const char* in_zip, const size_t in_zip_size, std::multimap<std::string, std::shared_ptr<File>>& files, const ZIP_COMPRESSION compression)
+		{
+			mz_zip_archive zip_archive;
+			mz_zip_zero_struct(&zip_archive);
+
+			char* buf = new char[in_zip_size];
+			memcpy(buf, in_zip, in_zip_size);
+
+			auto status = mz_zip_reader_init_mem(&zip_archive, buf, in_zip_size, 0);
+			if (!status)
+				return false;
+			mz_zip_writer_init_from_reader(&zip_archive, nullptr);
+			for (auto& file : files)
+				mz_zip_writer_add_mem(&zip_archive, file.first.c_str(), file.second->data.c_str(), file.second->data.length(), _compression[compression]);
+			char* _zip = nullptr;
+			mz_bool ret = mz_zip_writer_finalize_heap_archive(&zip_archive, (void**)&_zip, &zip_size);
+			ret &= mz_zip_writer_end(&zip_archive);
+			zip = std::shared_ptr<char>(_zip);
+			return ret;
+		}
+	}
+}
+#endif
+
 #ifdef _YXL_HASH_
 namespace YXL
 {

@@ -15,6 +15,8 @@
 #define _YXL_TRANSFORM_
 #define _YXL_GRAPHIC_
 #define _YXL_IMG_PROC_
+//#define _YXL_IMG_CODEC_
+//#define _YXL_MINI_Z_
 //#define _YXL_HASH_
 //#define _YXL_CIPHER_
 //#define _YXL_CRYPTO_
@@ -1559,6 +1561,100 @@ namespace YXL
 namespace YXL
 {
 	cv::Mat LIB_YXL_HELPER FilterImage(cv::Mat img, cv::Mat kernel, cv::Mat mask = cv::Mat());
+}
+#endif
+
+#ifdef _YXL_IMG_CODEC_
+namespace YXL
+{
+	namespace Image
+	{
+		//encode
+
+#define DECLARE_ALL(marco) \
+		marco(RGBA);\
+		marco(BGRA);\
+		marco(RGB);\
+		marco(BGR);\
+		marco(Grey);
+
+#define DECODE_FUNC(name) void Decode##name(std::shared_ptr<unsigned char>& img, int& w, int& h, CStr& in_data);
+		DECLARE_ALL(DECODE_FUNC)
+#undef DECODE_FUNC
+		//decode
+
+#define ENCODE_FUNC(name) void EncodePNG_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h);
+		DECLARE_ALL(ENCODE_FUNC)
+#undef ENCODE_FUNC
+
+		//webp
+#define DECODE_FUNC_WEBP(name) void DecodeWebP_##name(std::shared_ptr<unsigned char>& img, int& w, int& h, CStr& in_data);
+		DECLARE_ALL(DECODE_FUNC_WEBP);
+#undef DECODE_FUNC_WEBP
+
+#define ENCODE_FUNC_WEBP(name) void EncodeWebp_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h, const float quality);
+		// @quality: 
+		//	[0-100): lossy
+		//	>=100: lossless
+		DECLARE_ALL(ENCODE_FUNC_WEBP);
+#undef ENCODE_FUNC_WEBP
+
+#undef DECLARE_ALL
+	}
+}
+#endif
+
+#ifdef _YXL_MINI_Z_
+namespace YXL
+{
+	namespace Zip
+	{
+		enum struct ZIP_COMPRESSION
+		{
+			ZIP_NO_COMPRESSION = 0,
+			ZIP_BEST_SPEED = 1,
+			ZIP_BEST_COMPRESSION = 2,
+			ZIP_UBER_COMPRESSION = 3,
+			ZIP_DEFAULT_LEVEL = 4,
+		};
+		struct File
+		{
+			std::string fn;
+			std::string data;
+			File() {}
+			File(CStr& fn, CStr& data):fn(fn),data(data){}
+
+#define READ_FUNC(Name, type) type Read##Name(){CheckData();type out;(*_ss)>>out;}
+			READ_FUNC(Int, int);
+			READ_FUNC(Float, float);
+			READ_FUNC(Double, double);
+			READ_FUNC(String, std::string);
+			READ_FUNC(Char, char);
+#undef READ_FUNC
+			
+		private:
+			std::shared_ptr<std::stringstream> _ss=nullptr;
+			std::string _data_id;
+
+			void CheckData()
+			{
+				std::string tmp = std::to_string((long long)data.data()) + std::to_string(data.length());
+				if (tmp == _data_id)
+					return;
+				_ss = std::shared_ptr<std::stringstream>(new std::stringstream);
+				(*_ss) << data;
+				_data_id = tmp;
+			}
+		};
+		bool Unzip(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr& zip_content, const bool is_fn_lowercase = false);
+		bool RetrieveFiles(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr& zip_content, const std::vector<std::string>& files_to_get, const bool is_fn_lowercase = false);
+		bool Zip(std::shared_ptr<char>& zip, size_t& zip_size, 
+			std::multimap<std::string, std::shared_ptr<File>>& files, 
+			const ZIP_COMPRESSION compression = ZIP_COMPRESSION::ZIP_DEFAULT_LEVEL);
+		bool ZipAddFile(std::shared_ptr<char>& zip, size_t& zip_size, 
+			const char* in_zip, const size_t in_zip_size, std::multimap<std::string, std::shared_ptr<File>>& files, 
+			const ZIP_COMPRESSION compression = ZIP_COMPRESSION::ZIP_DEFAULT_LEVEL);
+	}
 }
 #endif
 
