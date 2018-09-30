@@ -186,7 +186,7 @@ namespace YXL
 			return str.substr(beg, end - beg+1);
 		}
 
-		inline std::string Replace(const std::string& str, std::map<std::string, std::string>& replace_strs)
+		inline std::string Replace(const std::string& str, const std::map<std::string, std::string>& replace_strs)
 		{
 			std::string res = str;
 			size_t pos = 0;
@@ -392,7 +392,8 @@ namespace YXL
 		//return high-low
 		static std::pair<DWORD, DWORD> GetFileInfo(const std::string& file_path, FileInfo fi);
 
-		static std::string BrowseFile(const char* strFilter = "Images (*.jpg;*.png)\0*.jpg;*.png\0All (*.*)\0*.*\0\0", bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
+		//filters: pair of "text-filter", {"Images", "*.jpg;*.png"}
+		static std::string BrowseFile(const std::vector<std::pair<std::string, std::string>>& filters, bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
 		static std::string BrowseFolder(CStr& title = "BrowseFolder");
 
 		// Get file names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
@@ -416,6 +417,8 @@ namespace YXL
 		}
 		static bool FolderExist(CStr& strPath)
 		{
+			if (strPath.size() == 0)
+				return false;
 			int i = (int)strPath.size() - 1;
 			for (; i >= 0 && (strPath[i] == '\\' || strPath[i] == '/'); i--)
 				;
@@ -475,9 +478,11 @@ namespace YXL
 			if (nullptr == _app)
 				_app = std::shared_ptr<QApplication>(new QApplication(argc, argv));
 		}
-		//may need call CmFile::InitQApplication first
-		static std::string BrowseFile(const char* strFilter = "Images (*.jpg *.png);;All (*.*)", bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
-		//may need call CmFile::InitQApplication first
+		//may need call YXL::File::InitQApplication first
+		//filters: pair of "text-filter", {"Images", "*.jpg;*.png"}
+		static std::string BrowseFile(const std::vector<std::pair<std::string, std::string>>& filters, bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
+		//may need call YXL::File::InitQApplication first
+		//filters: pair of "text-filter", {"Images", "*.jpg;*.png"}
 		static std::string BrowseFolder(CStr& title = "BrowseFolder");
 
 		// Get file names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
@@ -503,6 +508,8 @@ namespace YXL
 		}
 		static inline bool FolderExist(CStr& strPath)
 		{
+			if (strPath.size() == 0)
+				return false;
 			int i = (int)strPath.size() - 1;
 			for (; i >= 0 && (strPath[i] == '\\' || strPath[i] == '/'); i--)
 				;
@@ -1605,17 +1612,29 @@ namespace YXL
 #endif
 
 #ifdef _YXL_MINI_Z_
+#include <sstream>
 namespace YXL
 {
 	namespace Zip
 	{
 		enum struct ZIP_COMPRESSION
 		{
-			ZIP_NO_COMPRESSION = 0,
-			ZIP_BEST_SPEED = 1,
-			ZIP_BEST_COMPRESSION = 2,
-			ZIP_UBER_COMPRESSION = 3,
-			ZIP_DEFAULT_LEVEL = 4,
+			NO_COMPRESSION = 0,
+			LEVEL_0,
+			LEVEL_1,
+			LEVEL_2,
+			LEVEL_3,
+			LEVEL_4,
+			LEVEL_5,
+			LEVEL_6,
+			LEVEL_7,
+			LEVEL_8,
+			LEVEL_9,
+			LEVEL_10,
+			BEST_SPEED,
+			BEST_COMPRESSION,
+			UBER_COMPRESSION,
+			DEFAULT_LEVEL,
 		};
 		struct File
 		{
@@ -1648,12 +1667,15 @@ namespace YXL
 		};
 		bool Unzip(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr& zip_content, const bool is_fn_lowercase = false);
 		bool RetrieveFiles(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr& zip_content, const std::vector<std::string>& files_to_get, const bool is_fn_lowercase = false);
+		bool Zip(std::shared_ptr<char>& zip, size_t& zip_size,
+			std::map<std::string, std::string>& fn_data,
+			const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
 		bool Zip(std::shared_ptr<char>& zip, size_t& zip_size, 
 			std::multimap<std::string, std::shared_ptr<File>>& files, 
-			const ZIP_COMPRESSION compression = ZIP_COMPRESSION::ZIP_DEFAULT_LEVEL);
+			const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
 		bool ZipAddFile(std::shared_ptr<char>& zip, size_t& zip_size, 
 			const char* in_zip, const size_t in_zip_size, std::multimap<std::string, std::shared_ptr<File>>& files, 
-			const ZIP_COMPRESSION compression = ZIP_COMPRESSION::ZIP_DEFAULT_LEVEL);
+			const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
 	}
 }
 #endif

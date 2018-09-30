@@ -69,8 +69,18 @@ namespace YXL
 		return ret;
 	}
 
-	std::string File::BrowseFile(const char * strFilter, bool isOpen, const std::string & def_dir, CStr & title)
+	std::string File::BrowseFile(const  std::vector<std::pair<std::string, std::string>>& in_filters, bool isOpen, const std::string & def_dir, CStr & title)
 	{
+		std::string filters;
+		{
+			std::string empty(1, '\0');
+			for (auto& pair : in_filters)
+				filters += pair.first + " (" + pair.second + ")" + empty + pair.second + empty;
+			if (in_filters.empty())
+				filters = "All (*.*)" + empty + "*.*" + empty;
+			filters += empty;
+		}
+
 		static char Buffer[MAX_PATH];
 		GetCurrentDirectoryA(MAX_PATH, Buffer);
 		std::string dir = Buffer;
@@ -105,7 +115,7 @@ namespace YXL
 		ofn.lStructSize = sizeof(ofn);
 		ofn.lpstrFile = Buffer;
 		ofn.nMaxFile = MAX_PATH;
-		ofn.lpstrFilter = strFilter;
+		ofn.lpstrFilter = filters.c_str();
 		ofn.nFilterIndex = 1;
 		ofn.Flags = OFN_PATHMUSTEXIST;
 
@@ -145,7 +155,7 @@ namespace YXL
 			if (Buffer[strlen(Buffer) - 1] == '\\')
 				Buffer[strlen(Buffer) - 1] = 0;
 
-			return std::string(Buffer);
+			return std::string(Buffer)+"\\";
 		}
 		return std::string();
 	}
@@ -350,11 +360,23 @@ namespace YXL
 	std::string File::BrowseFolder(CStr& title)
 	{
 		auto dir = QFileDialog::getExistingDirectory(nullptr, QString::fromLocal8Bit(title.c_str()));
-		return (std::string)dir.toLocal8Bit();
+		return (std::string)dir.toLocal8Bit()+"\\";
 	}
 
-	std::string File::BrowseFile(const char* strFilter, bool isOpen, const std::string& def_dir, CStr& title)
+	std::string File::BrowseFile(const std::vector<std::pair<std::string, std::string>>& in_filters, bool isOpen, const std::string& def_dir, CStr& title)
 	{
+		std::string filters;
+		{
+			for (auto& pair : in_filters)
+			{
+				if (filters.empty() == false)
+					filters += ";;";
+				filters += pair.first + " (" + pair.second + ")";
+			}
+			if (in_filters.empty())
+				filters += "All (*.*)";
+		}
+
 		auto wkdir = GetWkDir();
 		std::string opened_dir = wkdir + "\\" + def_dir;
 		if (false == FolderExist(opened_dir))
@@ -368,12 +390,13 @@ namespace YXL
 				opened_dir = wkdir;
 			}
 		}
+		std::string opened_dir = "F;\\";
 
 		QString qPath;
 		if (isOpen)
-			qPath = QFileDialog::getOpenFileName(nullptr, QString::fromLocal8Bit(title.c_str()), QString::fromLocal8Bit(opened_dir.c_str()), QString::fromLocal8Bit(strFilter));
+			qPath = QFileDialog::getOpenFileName(nullptr, QString::fromLocal8Bit(title.c_str()), QString::fromLocal8Bit(opened_dir.c_str()), QString::fromLocal8Bit(filters.c_str()));
 		else
-			qPath = QFileDialog::getSaveFileName(nullptr, QString::fromLocal8Bit(title.c_str()), QString::fromLocal8Bit(opened_dir.c_str()), QString::fromLocal8Bit(strFilter));
+			qPath = QFileDialog::getSaveFileName(nullptr, QString::fromLocal8Bit(title.c_str()), QString::fromLocal8Bit(opened_dir.c_str()), QString::fromLocal8Bit(filters.c_str()));
 
 		return (std::string)qPath.toLocal8Bit();
 	}
@@ -845,13 +868,24 @@ namespace YXL
 {
 	namespace Zip
 	{
-		std::map<ZIP_COMPRESSION, mz_uint> _compression=
+		static const std::map<ZIP_COMPRESSION, mz_uint> _compression=
 		{
-			{ ZIP_COMPRESSION::ZIP_NO_COMPRESSION, MZ_NO_COMPRESSION},
-			{ ZIP_COMPRESSION::ZIP_BEST_SPEED, MZ_BEST_SPEED},
-			{ ZIP_COMPRESSION::ZIP_BEST_COMPRESSION, MZ_BEST_COMPRESSION},
-			{ ZIP_COMPRESSION::ZIP_UBER_COMPRESSION, MZ_UBER_COMPRESSION},
-			{ ZIP_COMPRESSION::ZIP_DEFAULT_LEVEL, MZ_DEFAULT_LEVEL},
+			{ ZIP_COMPRESSION::NO_COMPRESSION, MZ_NO_COMPRESSION},
+			{ ZIP_COMPRESSION::LEVEL_0, 0 },
+			{ ZIP_COMPRESSION::LEVEL_1, 1 },
+			{ ZIP_COMPRESSION::LEVEL_2, 2 },
+			{ ZIP_COMPRESSION::LEVEL_3, 3 },
+			{ ZIP_COMPRESSION::LEVEL_4, 4 },
+			{ ZIP_COMPRESSION::LEVEL_5, 5 },
+			{ ZIP_COMPRESSION::LEVEL_6, 6 },
+			{ ZIP_COMPRESSION::LEVEL_7, 7 },
+			{ ZIP_COMPRESSION::LEVEL_8, 8 },
+			{ ZIP_COMPRESSION::LEVEL_9, 9 },
+			{ ZIP_COMPRESSION::LEVEL_10, 10},
+			{ ZIP_COMPRESSION::BEST_SPEED, MZ_BEST_SPEED},
+			{ ZIP_COMPRESSION::BEST_COMPRESSION, MZ_BEST_COMPRESSION},
+			{ ZIP_COMPRESSION::UBER_COMPRESSION, MZ_UBER_COMPRESSION},
+			{ ZIP_COMPRESSION::DEFAULT_LEVEL, MZ_DEFAULT_LEVEL},
 		};
 
 		bool Unzip(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr& zip_content, const bool is_fn_lowercase)
@@ -956,6 +990,19 @@ namespace YXL
 			mz_zip_reader_end(&zip_archive);
 
 			return files_to_get.size() == flags.size();
+		}
+
+		bool Zip(std::shared_ptr<char>& zip, size_t & zip_size, std::map<std::string, std::string>& fn_data, const ZIP_COMPRESSION compression)
+		{
+			std::multimap<std::string, std::shared_ptr<File>> files;
+
+			for (auto pair : fn_data)
+			{
+				std::shared_ptr<YXL::Zip::File> file(new YXL::Zip::File(pair.first, pair.second));
+				files.insert({ file->fn, file });
+			}
+
+			return Zip(zip, zip_size, files, compression);
 		}
 
 		bool Zip(std::shared_ptr<char>& zip, size_t& zip_size, std::multimap<std::string, std::shared_ptr<File>>& files, const ZIP_COMPRESSION compression)
