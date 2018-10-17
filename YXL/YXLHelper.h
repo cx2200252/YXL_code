@@ -1615,7 +1615,7 @@ namespace YXL
 #include <sstream>
 namespace YXL
 {
-	namespace Zip
+	namespace ZIP
 	{
 		enum struct ZIP_COMPRESSION
 		{
@@ -1636,14 +1636,23 @@ namespace YXL
 			UBER_COMPRESSION,
 			DEFAULT_LEVEL,
 		};
-		struct File
+		class File
 		{
-			std::string fn;
-			std::string data;
-			File() {}
-			File(CStr& fn, CStr& data):fn(fn),data(data){}
+		public:
+			File(CStr& fn, CStr& data) :fn(fn), _data(data) {}
+			File(CStr& fn, std::shared_ptr<const char> data, const size_t size):fn(fn), _data2(data), _data2_size(size){}
 
-#define READ_FUNC(Name, type) type Read##Name(){CheckData();type out;(*_ss)>>out;}
+			const char* GetDataPtr()
+			{
+				return (_data2 == nullptr) ? _data.c_str() : _data2.get();
+			}
+			size_t GetDataSize()
+			{
+				return (_data2 == nullptr) ? _data.length() : _data2_size;
+			}
+
+
+#define READ_FUNC(Name, type) type Read##Name(){CheckData();type out;(*_ss)>>out; return out;}
 			READ_FUNC(Int, int);
 			READ_FUNC(Float, float);
 			READ_FUNC(Double, double);
@@ -1652,30 +1661,82 @@ namespace YXL
 #undef READ_FUNC
 			
 		private:
-			std::shared_ptr<std::stringstream> _ss=nullptr;
-			std::string _data_id;
-
 			void CheckData()
 			{
-				std::string tmp = std::to_string((long long)data.data()) + std::to_string(data.length());
+				size_t size = GetDataSize();
+				const char* ptr = GetDataPtr();
+
+				std::string tmp = std::to_string((long long)ptr) + std::to_string(size);
 				if (tmp == _data_id)
 					return;
 				_ss = std::shared_ptr<std::stringstream>(new std::stringstream);
-				(*_ss) << data;
+				_ss->write(ptr, size);
+				//(*_ss) << data;
 				_data_id = tmp;
 			}
+		private:
+			std::string fn;
+			std::string _data;
+			std::shared_ptr<const char> _data2 = nullptr;
+			size_t _data2_size=0;
+
+		private:
+			std::shared_ptr<std::stringstream> _ss = nullptr;
+			std::string _data_id;
 		};
-		bool Unzip(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr& zip_content, const bool is_fn_lowercase = false);
-		bool RetrieveFiles(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr& zip_content, const std::vector<std::string>& files_to_get, const bool is_fn_lowercase = false);
-		bool Zip(std::shared_ptr<char>& zip, size_t& zip_size,
-			std::map<std::string, std::string>& fn_data,
-			const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
-		bool Zip(std::shared_ptr<char>& zip, size_t& zip_size, 
-			std::multimap<std::string, std::shared_ptr<File>>& files, 
-			const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
-		bool ZipAddFile(std::shared_ptr<char>& zip, size_t& zip_size, 
-			const char* in_zip, const size_t in_zip_size, std::multimap<std::string, std::shared_ptr<File>>& files, 
-			const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
+
+		class Zip
+		{
+		public:
+			Zip(std::shared_ptr<const char> data, const size_t size, const bool is_unzip);
+			Zip(const std::string& content, const bool is_unzip);
+
+			bool IsFine() const;
+			bool ToZip(std::shared_ptr<char>& zip, size_t& zip_size, const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
+
+			void AddFile(const std::string& fn, std::shared_ptr<const char> data, const size_t size);
+			void AddFile(const std::string& fn, const std::string& content);
+
+			void GetFiles(std::multimap<std::string, std::shared_ptr<File>>& files);
+			void GetFiles(std::multimap<std::string, std::string>& files);
+			void GetFiles(std::map<std::string, std::shared_ptr<File>>& files);
+			void GetFiles(std::map<std::string, std::string>& files);
+
+		public:
+			static bool Unzip(std::multimap<std::string, std::shared_ptr<File>>& out_files, const char* zip, const size_t zip_size, const bool is_fn_lowercase = false);
+			static bool RetrieveFiles(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr& zip_content, const std::vector<std::string>& files_to_get, const bool is_fn_lowercase = false);
+			static bool ToZip(std::shared_ptr<char>& zip, size_t& zip_size,
+				const std::map<std::string, std::string>& fn_data,
+				const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
+			static bool ToZip(std::shared_ptr<char>& zip, size_t& zip_size,
+				const std::multimap<std::string, std::shared_ptr<File>>& files,
+				const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
+			static bool ZipAddFile(std::shared_ptr<char>& zip, size_t& zip_size,
+				const char* in_zip, const size_t in_zip_size,
+				const std::map<std::string, std::string>& fn_data,
+				const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
+			static bool ZipAddFile(std::shared_ptr<char>& zip, size_t& zip_size,
+				const char* in_zip, const size_t in_zip_size, std::multimap<std::string, std::shared_ptr<File>>& files,
+				const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
+
+		private:
+			static bool ToZip(std::shared_ptr<char>& zip, size_t& zip_size,
+				const std::map<std::string, std::pair<const char*, size_t>>& fn_data,
+				const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
+			static bool ZipAddFile(std::shared_ptr<char>& zip, size_t& zip_size,
+				const char* in_zip, const size_t in_zip_size,
+				const std::map<std::string, std::pair<const char*, size_t>>& fn_data,
+				const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
+
+		private:
+			std::shared_ptr<const char> _data;
+			size_t _size;
+			std::string _content;
+
+			//
+			bool _is_fine = true;
+			std::multimap<std::string, std::shared_ptr<File>> _files;
+		};
 	}
 }
 #endif

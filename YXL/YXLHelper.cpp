@@ -866,9 +866,9 @@ namespace YXL
 #include "miniz/miniz.h"
 namespace YXL
 {
-	namespace Zip
+	namespace ZIP
 	{
-		static const std::map<ZIP_COMPRESSION, mz_uint> _compression=
+		static std::map<ZIP_COMPRESSION, mz_uint> _compression=
 		{
 			{ ZIP_COMPRESSION::NO_COMPRESSION, MZ_NO_COMPRESSION},
 			{ ZIP_COMPRESSION::LEVEL_0, 0 },
@@ -888,13 +888,80 @@ namespace YXL
 			{ ZIP_COMPRESSION::DEFAULT_LEVEL, MZ_DEFAULT_LEVEL},
 		};
 
-		bool Unzip(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr& zip_content, const bool is_fn_lowercase)
+		Zip::Zip(std::shared_ptr<const char> data, const size_t size, const bool is_unzip)
 		{
-			out_files.clear();
+			if (false == is_unzip)
+			{
+				_data = data;
+				_size = size;
+			}
+			else
+				_is_fine = Unzip(_files, data.get(), size, false);
+		}
+
+		Zip::Zip(const std::string & content, const bool is_unzip)
+		{
+			if (false == is_unzip)
+				_content = content;
+			else
+				_is_fine = Unzip(_files, content.c_str(), content.size(), false);
+		}
+
+		bool Zip::IsFine() const
+		{
+			return _is_fine;
+		}
+
+		bool Zip::ToZip(std::shared_ptr<char>& zip, size_t & zip_size, const ZIP_COMPRESSION compression)
+		{
+			if (_data)
+				return ZipAddFile(zip, zip_size, _data.get(), _size, _files, compression);
+			else if (_content.empty() == false)
+				return ZipAddFile(zip, zip_size, _content.c_str(), _content.length(), _files, compression);
+			else
+				return ToZip(zip, zip_size, _files, compression);
+		}
+
+		void Zip::AddFile(const std::string& fn, std::shared_ptr<const char> data, const size_t size)
+		{
+			_files.insert({ fn, std::shared_ptr<File>(new File(fn, data, size)) });
+		}
+
+		void Zip::AddFile(const std::string & fn, const std::string & content)
+		{
+			_files.insert({ fn, std::shared_ptr<File>(new File(fn, content)) });
+		}
+
+		void Zip::GetFiles(std::multimap<std::string, std::shared_ptr<File>>& files)
+		{
+			_files = files;
+		}
+
+		void Zip::GetFiles(std::multimap<std::string, std::string>& files)
+		{
+			for (auto pair : _files)
+				files.insert({ pair.first, std::string(pair.second->GetDataPtr(), pair.second->GetDataSize()) });
+		}
+
+		void Zip::GetFiles(std::map<std::string, std::shared_ptr<File>>& files)
+		{
+			for (auto pair : _files)
+				files[pair.first] = pair.second;
+		}
+
+		void Zip::GetFiles(std::map<std::string, std::string>& files)
+		{
+			for (auto pair : _files)
+				files[pair.first] = std::string(pair.second->GetDataPtr(), pair.second->GetDataSize());
+		}
+
+		bool Zip::Unzip(std::multimap<std::string, std::shared_ptr<File>>& out_files, const char * zip, const size_t zip_size, const bool is_fn_lowercase)
+		{
+			//out_files.clear();
 			mz_zip_archive zip_archive;
 			mz_zip_zero_struct(&zip_archive);
 
-			auto status = mz_zip_reader_init_mem(&zip_archive, zip_content.c_str(), zip_content.length(), 0);
+			auto status = mz_zip_reader_init_mem(&zip_archive, zip, zip_size, 0);
 			if (!status)
 				return false;
 			int fileCount = (int)mz_zip_reader_get_num_files(&zip_archive);
@@ -924,13 +991,11 @@ namespace YXL
 				auto ret = (char*)mz_zip_reader_extract_to_heap(&zip_archive, i, &size, 0);
 				if (ret)
 				{
-					auto f= std::shared_ptr<File>(new File);
-					f->fn= file_stat.m_filename;
+					std::string fn= file_stat.m_filename;
 					if (is_fn_lowercase)
-						std::transform(f->fn.begin(), f->fn.end(), f->fn.begin(), ::tolower);
-					f->data = std::string(ret, ret + size);
-					out_files.insert({ f->fn, f });
-					delete[] ret;
+						std::transform(fn.begin(), fn.end(), fn.begin(), ::tolower);
+					auto f = std::shared_ptr<File>(new File(fn, std::shared_ptr<const char>(ret), size));
+					out_files.insert({ fn, f });
 				}
 			}
 
@@ -939,7 +1004,7 @@ namespace YXL
 			return true;
 		}
 
-		bool RetrieveFiles(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr & zip_content, const std::vector<std::string>& files_to_get, const bool is_fn_lowercase)
+		bool Zip::RetrieveFiles(std::multimap<std::string, std::shared_ptr<File>>& out_files, CStr & zip_content, const std::vector<std::string>& files_to_get, const bool is_fn_lowercase)
 		{
 			out_files.clear();
 			mz_zip_archive zip_archive;
@@ -975,14 +1040,12 @@ namespace YXL
 				auto ret = (char*)mz_zip_reader_extract_to_heap(&zip_archive, i, &size, 0);
 				if (ret)
 				{
-					auto f = std::shared_ptr<File>(new File);
-					f->fn = file_stat.m_filename;
+					std::string fn = file_stat.m_filename;
 					if (is_fn_lowercase)
-						std::transform(f->fn.begin(), f->fn.end(), f->fn.begin(), ::tolower);
-					f->data = std::string(ret, ret + size);
-					out_files.insert({ f->fn, f });
-					delete[] ret;
-					++flags[f->fn];
+						std::transform(fn.begin(), fn.end(), fn.begin(), ::tolower);
+					auto f = std::shared_ptr<File>(new File(fn, std::shared_ptr<const char>(ret), size));
+					out_files.insert({ fn, f });
+					++flags[fn];
 				}
 			}
 
@@ -992,20 +1055,39 @@ namespace YXL
 			return files_to_get.size() == flags.size();
 		}
 
-		bool Zip(std::shared_ptr<char>& zip, size_t & zip_size, std::map<std::string, std::string>& fn_data, const ZIP_COMPRESSION compression)
+		bool Zip::ToZip(std::shared_ptr<char>& zip, size_t & zip_size, const std::map<std::string, std::string>& fn_data, const ZIP_COMPRESSION compression)
 		{
-			std::multimap<std::string, std::shared_ptr<File>> files;
-
+			std::map<std::string, std::pair<const char*, size_t>> f;
 			for (auto pair : fn_data)
-			{
-				std::shared_ptr<YXL::Zip::File> file(new YXL::Zip::File(pair.first, pair.second));
-				files.insert({ file->fn, file });
-			}
-
-			return Zip(zip, zip_size, files, compression);
+				f.insert({ pair.first,{ pair.second.c_str(), pair.second.length() } });
+			return ToZip(zip, zip_size, f, compression);
 		}
 
-		bool Zip(std::shared_ptr<char>& zip, size_t& zip_size, std::multimap<std::string, std::shared_ptr<File>>& files, const ZIP_COMPRESSION compression)
+		bool Zip::ToZip(std::shared_ptr<char>& zip, size_t& zip_size, const std::multimap<std::string, std::shared_ptr<File>>& files, const ZIP_COMPRESSION compression)
+		{
+			std::map<std::string, std::pair<const char*, size_t>> f;
+			for (auto pair : files)
+				f.insert({ pair.first, {pair.second->GetDataPtr(), pair.second->GetDataSize()} });
+			return ToZip(zip, zip_size, f, compression);
+		}
+
+		bool Zip::ZipAddFile(std::shared_ptr<char>& zip, size_t & zip_size, const char * in_zip, const size_t in_zip_size, const std::map<std::string, std::string>& fn_data, const ZIP_COMPRESSION compression)
+		{
+			std::map<std::string, std::pair<const char*, size_t>> f;
+			for (auto pair : fn_data)
+				f.insert({ pair.first,{ pair.second.c_str(), pair.second.length() } });
+			return ZipAddFile(zip, zip_size, in_zip, in_zip_size, f, compression);
+		}
+
+		bool Zip::ZipAddFile(std::shared_ptr<char>& zip, size_t & zip_size, const char * in_zip, const size_t in_zip_size, std::multimap<std::string, std::shared_ptr<File>>& files, const ZIP_COMPRESSION compression)
+		{
+			std::map<std::string, std::pair<const char*, size_t>> f;
+			for (auto pair : files)
+				f.insert({ pair.first,{ pair.second->GetDataPtr(), pair.second->GetDataSize() } });
+			return ZipAddFile(zip, zip_size, in_zip, in_zip_size, f, compression);
+		}
+
+		bool Zip::ToZip(std::shared_ptr<char>& zip, size_t& zip_size, const std::map<std::string, std::pair<const char*, size_t>>& files, const ZIP_COMPRESSION compression)
 		{
 			zip_size = 0;
 			mz_zip_archive zip_archive;
@@ -1015,7 +1097,7 @@ namespace YXL
 			if (!status)
 				return false;
 			for (auto& file : files)
-				mz_zip_writer_add_mem(&zip_archive, file.first.c_str(), file.second->data.c_str(), file.second->data.length(), _compression[compression]);
+				mz_zip_writer_add_mem(&zip_archive, file.first.c_str(), file.second.first, file.second.second, _compression[compression]);
 			char* _zip = nullptr;
 			mz_bool ret = mz_zip_writer_finalize_heap_archive(&zip_archive, (void**)&_zip, &zip_size);
 			ret &= mz_zip_writer_end(&zip_archive);
@@ -1023,11 +1105,13 @@ namespace YXL
 			return ret;
 		}
 
-		bool ZipAddFile(std::shared_ptr<char>& zip, size_t& zip_size, const char* in_zip, const size_t in_zip_size, std::multimap<std::string, std::shared_ptr<File>>& files, const ZIP_COMPRESSION compression)
+		bool Zip::ZipAddFile(std::shared_ptr<char>& zip, size_t& zip_size, const char* in_zip, const size_t in_zip_size,
+			const std::map<std::string, std::pair<const char*, size_t>>& files, const ZIP_COMPRESSION compression)
 		{
 			mz_zip_archive zip_archive;
 			mz_zip_zero_struct(&zip_archive);
 
+			//no need to release
 			char* buf = new char[in_zip_size];
 			memcpy(buf, in_zip, in_zip_size);
 
@@ -1036,11 +1120,13 @@ namespace YXL
 				return false;
 			mz_zip_writer_init_from_reader(&zip_archive, nullptr);
 			for (auto& file : files)
-				mz_zip_writer_add_mem(&zip_archive, file.first.c_str(), file.second->data.c_str(), file.second->data.length(), _compression[compression]);
+				mz_zip_writer_add_mem(&zip_archive, file.first.c_str(), file.second.first, file.second.second, _compression[compression]);
 			char* _zip = nullptr;
 			mz_bool ret = mz_zip_writer_finalize_heap_archive(&zip_archive, (void**)&_zip, &zip_size);
 			ret &= mz_zip_writer_end(&zip_archive);
 			zip = std::shared_ptr<char>(_zip);
+
+
 			return ret;
 		}
 	}
