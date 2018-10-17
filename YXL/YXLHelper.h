@@ -1801,32 +1801,35 @@ namespace YXL
 		bool RSAVerify_File(CStr& signature, CStr& fn_message, CStr& public_key);
 
 		//digest
-		std::string MD5(CStr& str);
-		std::string SHA1(CStr& str);
-		std::string SHA224(CStr& str);
-		std::string SHA256(CStr& str);
-		std::string SHA384(CStr& str);
-		std::string SHA512(CStr& str);
-		std::string SHA3_256(CStr& str);
-		std::string SHA3_384(CStr& str);
-		std::string SHA3_512(CStr& str);
+#define _Digest(name) std::string name(CStr& str)
+#define _DigestFile(name) std::string name##_File(CStr& fn_in)
+		_Digest(MD5);
+		_Digest(SHA1);
+		_Digest(SHA224);
+		_Digest(SHA256);
+		_Digest(SHA384);
+		_Digest(SHA512);
+		_Digest(SHA3_256);
+		_Digest(SHA3_384);
+		_Digest(SHA3_512);
 		/// \brief Tiger message digest
 		/// \sa <a href="http://www.cryptolounge.org/wiki/Tiger">Tiger</a>
+		_Digest(Tiger);
 		std::string Tiger(CStr& str);
 		/// \brief RIPEMD-128 message digest
 		/// \details Digest size is 128-bits.
 		/// \warning RIPEMD-128 is considered insecure, and should not be used unless you absolutely need it for compatibility.
 		/// \sa <a href="http://www.weidai.com/scan-mirror/md.html#RIPEMD-128">RIPEMD-128</a>
-		std::string Ripemd128(CStr& str);
+		_Digest(RIPEMD128);
 		/// \brief RIPEMD-160 message digest
 		/// \details Digest size is 160-bits.
 		/// \sa <a href="http://www.weidai.com/scan-mirror/md.html#RIPEMD-160">RIPEMD-160</a>
-		std::string Ripemd160(CStr& str);
+		_Digest(RIPEMD160);
 		/// \brief Whirlpool message digest
 		/// \details Crypto++ provides version 3.0 of the Whirlpool algorithm.
 		///   This version of the algorithm was submitted for ISO standardization.
 		/// \sa <a href="http://www.cryptopp.com/wiki/Whirlpool">Whirlpool</a>
-		std::string Whirlpool(CStr& str);
+		_Digest(Whirlpool);
 		/// \brief HMAC
 		/// \tparam T HashTransformation derived class
 		/// \details HMAC derives from MessageAuthenticationCodeImpl. It calculates the HMAC using
@@ -1834,55 +1837,68 @@ namespace YXL
 		/// \sa <a href="http://www.weidai.com/scan-mirror/mac.html#HMAC">HMAC</a>
 		//hex_key: empty for computing HMAC/SHA1 value for self test 
 		std::string HMAC(CStr& hex_key, CStr& str);
-
-		std::string MD5_File(CStr& fn_in);
-		std::string SHA1_File(CStr& fn_in);
-		std::string SHA224_File(CStr& fn_in);
-		std::string SHA256_File(CStr& fn_in);
-		std::string SHA384_File(CStr& fn_in);
-		std::string SHA512_File(CStr& fn_in);
-		std::string SHA3_256_File(CStr& fn_in);
-		std::string SHA3_384_File(CStr& fn_in);
-		std::string SHA3_512_File(CStr& fn_in);
-		std::string Tiger_File(CStr& fn_in);
-		std::string Ripemd128_File(CStr& fn_in);
-		std::string Ripemd160_File(CStr& fn_in);
-		std::string Whirlpool_File(CStr& fn_in);
+		_DigestFile(MD5);
+		_DigestFile(SHA1);
+		_DigestFile(SHA224);
+		_DigestFile(SHA256);
+		_DigestFile(SHA384);
+		_DigestFile(SHA512);
+		_DigestFile(SHA3_256);
+		_DigestFile(SHA3_384);
+		_DigestFile(SHA3_512);
+		_DigestFile(Tiger);
+		_DigestFile(RIPEMD128);
+		_DigestFile(RIPEMD160);
+		_DigestFile(Whirlpool);
 		std::string HMAC_File(CStr& hex_key, CStr& fn_in);
+#undef _Digest
+#undef _DigestFile
 
 		//AES
-		void AESEncryptCFB(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv);
-		void AESDecryptCFB(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv);
-		void AESEncryptOFB(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv);
-		void AESDecryptOFB(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv);
-		void AESEncryptCTR(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv);
-		void AESDecryptCTR(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv);
-		void AESEncryptECB(std::string& out, CStr& str, CStr& hex_key);
-		void AESDecryptECB(std::string& out, CStr& str, CStr& hex_key);
-		void AESEncryptCBC(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv);
-		void AESDecryptCBC(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv);
+#define _EncryptIV(name) void name(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv);
+#define _Encrypt(name) void name(std::string& out, CStr& str, CStr& hex_key);
+#define _EncryptFileIV(name) void name##_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv);
+#define _EncryptFile(name) void name##_File(CStr& fn_out, CStr& fn_in, CStr& hex_key);
+		_EncryptIV(AESEncryptCFB);
+		_EncryptIV(AESDecryptCFB);
+		_EncryptIV(AESEncryptOFB);
+		_EncryptIV(AESDecryptOFB);
+		_EncryptIV(AESEncryptCTR);
+		_EncryptIV(AESDecryptCTR);
+		_Encrypt(AESEncryptECB);
+		_Encrypt(AESDecryptECB);
+		_EncryptIV(AESEncryptCBC);
+		_EncryptIV(AESDecryptCBC);
 
-		void AESEncryptCFB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv);
-		void AESDecryptCFB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv);
-		void AESEncryptOFB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv);
-		void AESDecryptOFB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv);
-		void AESEncryptCTR_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv);
-		void AESDecryptCTR_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv);
-		void AESEncryptECB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key);
-		void AESDecryptECB_File(CStr& fn_out, CStr& fn_in, CStr& hex_key);
-		void AESEncryptCBC_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv);
-		void AESDecryptCBC_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv);
+		_EncryptFileIV(AESEncryptCFB);
+		_EncryptFileIV(AESDecryptCFB);
+		_EncryptFileIV(AESEncryptOFB);
+		_EncryptFileIV(AESDecryptOFB);
+		_EncryptFileIV(AESEncryptCTR);
+		_EncryptFileIV(AESDecryptCTR);
+		_EncryptFile(AESEncryptECB);
+		_EncryptFile(AESDecryptECB);
+		_EncryptFileIV(AESEncryptCBC);
+		_EncryptFileIV(AESDecryptCBC);
+#undef _EncryptIV
+#undef _Encrypt
+#undef _EncryptFileIV
+#undef _EncryptFile
 
+#define _Encode(name) void name(std::string& out, CStr& str)
+#define _EncodeFile(name) void name##_File(std::string& out, CStr& str)
 		//hex
-		void HexEncode(std::string& out, CStr& str);
-		void HexDecode(std::string& out, CStr& str);
-		void HexEncode_File(CStr& fn_in, CStr& fn_out);
-		void HexDecode_File(CStr& fn_in, CStr& fn_out);
+		_Encode(HexEncode);
+		_Encode(HexDecode);
+		_EncodeFile(HexEncode_File);
+		_EncodeFile(HexDecode);
 		//base64
-		void Base64Encode(std::string& out, CStr& str);
-		void Base64Decode(std::string& out, CStr& str);
-		void Base64Encode_File(CStr& fn_in, CStr& fn_out);
-		void Base64Decode_File(CStr& fn_in, CStr& fn_out);
+		_Encode(Base64Encode);
+		_Encode(Base64Decode);
+		_EncodeFile(Base64Encode);
+		_EncodeFile(Base64Decode);
+#undef _Encode
+#undef _EncodeFile
 	}
 }
 #endif
