@@ -1,0 +1,48 @@
+{
+	"v":{
+		"type":"grid",
+		"setting":{
+			"size":[1.0, 0.1],
+			"pos":[0, 0],
+			"cols":[2,4,4],
+			"border_expand":-1,
+			"border_width":0.001,
+			"is_abs":false
+		},
+		"child":[
+			{
+				"type":"text",
+				"setting":{
+					"size":[0.2, 1.0],
+					"pos":[0, 0],
+					"is_abs":false,
+					"font":"宋体",
+					"font_size":6,
+					"text":"Python 面向对象\nPython从设计之初就已经是一门面向对象的语言，正因为如此，在Python中创建一个类和对象是很容易的。本章节我们将详细介绍Python的面向对象编程。\n如果你以前没有接触过面向对象的编程语言，那你可能需要先了解一些面向对象语言的一些基本特征，在头脑里头形成一个基本的面向对象的概念，这样有助于你更容易的学习Python的面向对象编程。\n接下来我们先来简单的了解下面向对象的一些基本特征。",
+					"padding":[0.002, 0.002]
+				}
+			},
+			{
+				"type":"image",
+				"setting":{
+					"size":[0.4, 1.0],
+					"pos":[0.2, 0],
+					"is_abs":false,
+					"padding":[0.02, 0.02],
+					"img_path":"G:/C++/p2a/p2a_master_check/p2aBenchmark/andriodBenchmark/pushFiles/nv/26.png"
+				}
+			},
+			{
+				"type":"image",
+				"setting":{
+					"size":[0.4, 1.0],
+					"pos":[0.6, 0],
+					"is_abs":false,
+					"padding":[0.02, 0.02],
+					"img_path":"G:/C++/p2a/p2a_master_check/p2aBenchmark/andriodBenchmark/pushFiles/nv/27.png"
+				}
+			}
+		]
+	}
+
+}

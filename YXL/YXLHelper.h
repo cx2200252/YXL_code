@@ -19,7 +19,8 @@
 //#define _YXL_MINI_Z_
 //#define _YXL_HASH_
 //#define _YXL_CIPHER_
-//#define _YXL_CRYPTO_
+#define _YXL_CRYPTO_
+#define _YXL_ENCRYPT_DATA_
 //#define _YXL_GLFW_
 
 #include <string>
@@ -1741,6 +1742,170 @@ namespace YXL
 }
 #endif
 
+#ifdef _YXL_ENCRYPT_DATA_
+
+#include "tweetnacl/tweetnacl.h"
+namespace YXL
+{
+	namespace Crypt
+	{
+		class EncryptorBase
+		{
+		public:
+			virtual ~EncryptorBase() {}
+
+			virtual void Encrypt(std::string& out, const char* in, const size_t in_size, std::string nonce) = 0;
+			virtual void Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce) = 0;
+
+		protected:
+			void CheckKey(const int len, std::string& key, CStr& txt)
+			{
+				if (key.length() != len)
+				{
+					key.resize(len, ' ');
+					std::cout << txt << " resize to \"" << key << "\"" << std::endl;
+				}
+			}
+		};
+
+		class DefSymEncryptor : public EncryptorBase
+		{
+			typedef Tweetnacl::u8 KeyType;
+		public:
+			DefSymEncryptor(CStr& key)
+				:_key(key) 
+			{
+				CheckKey(crypto_secretbox_KEYBYTES, _key, "key");
+			}
+
+			void Encrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
+			{
+				CheckKey(crypto_secretbox_NONCEBYTES, nonce, "nonce");
+				out.resize(in_size);
+				Tweetnacl::crypto_secretbox((KeyType*)&out[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_key.c_str());
+			}
+
+			void Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
+			{
+				CheckKey(crypto_secretbox_NONCEBYTES, nonce, "nonce");
+				out.resize(in_size);
+				Tweetnacl::crypto_secretbox_open((KeyType*)&out[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_key.c_str());
+			}
+
+		private:
+			std::string _key;
+		};
+
+		class DefAsymEncryptor : public EncryptorBase
+		{
+			typedef Tweetnacl::u8 KeyType;
+		public:
+			DefAsymEncryptor(CStr& sec_key_A, CStr& pub_key_B)
+				:_sec_key_A(sec_key_A), _pub_key_B(pub_key_B)
+			{
+				CheckKey(crypto_box_PUBLICKEYBYTES, _pub_key_B, "public key");
+				CheckKey(crypto_box_SECRETKEYBYTES, _sec_key_A, "secret key");
+				_k.resize(crypto_box_BEFORENMBYTES);
+				Tweetnacl::crypto_box_beforenm((KeyType*)&_k[0], (const KeyType*)_pub_key_B.c_str(), (const KeyType*)_sec_key_A.c_str());
+			}
+
+			static void GenKeyPair(std::string& pk, std::string& sk)
+			{
+				sk.resize(crypto_box_SECRETKEYBYTES);
+				pk.resize(crypto_box_PUBLICKEYBYTES);
+				Tweetnacl::crypto_box_keypair((KeyType*)&pk[0], (KeyType*)&sk[0]);
+			}
+
+			void Encrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
+			{
+				CheckKey(crypto_secretbox_NONCEBYTES, nonce, "nonce");
+				out.resize(in_size);
+				Tweetnacl::crypto_box_afternm((KeyType*)&out[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_k.c_str());
+			}
+			void Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
+			{
+				CheckKey(crypto_secretbox_NONCEBYTES, nonce, "nonce");
+				out.resize(in_size);
+				Tweetnacl::crypto_box_open_afternm((KeyType*)&out[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_k.c_str());
+			}
+			
+		private:
+			std::string _sec_key_A;
+			std::string _pub_key_B;
+			std::string _k;
+		};
+
+		class SignerBase
+		{
+		public:
+			virtual ~SignerBase() {}
+
+			virtual void Sign(std::string& out, const char* in, const size_t in_size) = 0;
+			virtual bool Verify(std::string&out, const char* in, const size_t in_size) = 0;
+
+		protected:
+			void CheckKey(const int len, std::string& key, CStr& txt)
+			{
+				if (key.length() != len)
+				{
+					key.resize(len, ' ');
+					std::cout << txt << " resize to \"" << key << "\"" << std::endl;
+				}
+			}
+		};
+
+		class DefSigner : public SignerBase
+		{
+			typedef Tweetnacl::u8 KeyType;
+		public:
+			DefSigner(CStr& sec_key_A, CStr& pub_key_B)
+				:_sec_key_A(sec_key_A), _pub_key_B(pub_key_B)
+			{
+				CheckKey(crypto_sign_PUBLICKEYBYTES, _pub_key_B, "public key");
+				CheckKey(crypto_sign_SECRETKEYBYTES, _sec_key_A, "secret key");
+			}
+
+			static void GenKeyPair(std::string& pk, std::string& sk)
+			{
+				sk.resize(crypto_sign_SECRETKEYBYTES);
+				pk.resize(crypto_sign_PUBLICKEYBYTES);
+				Tweetnacl::crypto_sign_keypair((KeyType*)&pk[0], (KeyType*)&sk[0]);
+			}
+
+			void Sign(std::string& out, const char* in, const size_t in_size)
+			{
+				out.resize(in_size + crypto_sign_BYTES);
+				size_t smlen(0);
+				Tweetnacl::crypto_sign((KeyType*)&out[0], &smlen, (const KeyType*)in, in_size, (KeyType*)_sec_key_A.c_str());
+				out.resize(smlen);
+			}
+
+			bool Verify(std::string& out, const char* in, const size_t in_size)
+			{
+				out.resize(in_size);
+				size_t mlen;
+				int ret = Tweetnacl::crypto_sign_open((KeyType*)&out[0], &mlen, (const KeyType*)in, in_size, (KeyType*)_pub_key_B.c_str());
+				out.resize(mlen);
+				return 0 == ret;
+			}
+
+		private:
+			std::string _sec_key_A;
+			std::string _pub_key_B;
+		};
+
+		class CryptData
+		{
+		public:
+			CryptData(CStr&);
+
+
+		};
+	}
+}
+
+#endif
+
 #ifdef _YXL_HASH_
 namespace YXL
 {
@@ -1778,6 +1943,10 @@ namespace YXL
 }
 
 #endif
+
+
+
+
 
 #ifdef _YXL_CRYPTO_
 
@@ -1902,6 +2071,8 @@ namespace YXL
 	}
 }
 #endif
+
+
 
 #ifdef _YXL_GLFW_
 namespace YXL
