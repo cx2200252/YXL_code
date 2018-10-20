@@ -1,0 +1,9 @@
+{
+	"height":0.1,
+	"ratio":[0.3, 0.5,0.2],
+	"type":["text", "image", "image"],
+	"rows":[
+		["Python 面向对象", "test_img/25.png","test_img/25.png"],
+		["Python 面向对象", "test_img/27.png","test_img/27.png"]
+	]
+}

@@ -1,5 +1,6 @@
 import utilites.report.Report as Report
-import utilites.report.JsonParser as JsonParser
+import utilites.report.Assist as Assist
+import json
 
 def testGrid(doc):
     rect = Report.RepEleRect(doc)
@@ -60,19 +61,10 @@ def testText(doc):
     txt.draw(doc)
 
 if __name__=="__main__":
-    doc = Report.Doc("A3.pdf", Report.PageSizes.A3)
+    # temp = Assist.textTemplate2Json("test/test.txt")
+    temp = Assist.jsonTemplate2Json("test/test.json")
 
-    # testGrid(doc)
-    # testImg(doc)
-    # testText(doc)
-    Report.importFont("宋体","C:/Windows/WinSxS/amd64_microsoft-windows-font-truetype-simsun_31bf3856ad364e35_10.0.17134.1_none_e089ab61d8d9374e/simsun.ttc")
-
-    JsonParser.DrawJsonFromFile("test.json", doc)
-
+    doc = Report.Doc("test/A3.pdf", Report.PageSizes.A3)
+    drawer=Assist.Json2PDF()
+    drawer.DrawJson(temp, doc)
     doc.saveDoc()
-
-    # img = Report.RepEleImage([0.5, 0.5], "G:/C++/p2a/p2a_master_check/p2aBenchmark/andriodBenchmark/pushFiles/nv/25.png")
-    # img.setAbs(False)
-    # img.setPadding([0.3, 0.2])
-    # img.draw(doc, [0.25, 0.25])
-    # doc.saveDoc()

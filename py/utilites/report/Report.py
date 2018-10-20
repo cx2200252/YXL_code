@@ -10,7 +10,39 @@ import reportlab.lib.units as Units
 import reportlab.pdfbase.ttfonts
 import os
 
+sys_font_dir="C:/Windows/Fonts/"
+font_name_mapping={
+    "等线 常规":"Deng.ttf",
+    "等线 粗体":"Dengb.ttf",
+    "等线 细体": "Dengl.ttf",
+    "方正等线": "DengXian.ttf",
+    "方正兰亭超细黑简体": "FZLTCXHJW.TTF",
+    "方正舒体": "FZSTK.TTF",
+    "方正姚体": "FZYTK.TTF",
+    "仿宋": "simfang.ttf",
+    "黑体":"simhei.ttf",
+    "华文彩云": "STCAIYUN.TTF",
+    "华文仿宋": "STFANGSO.TTF",
+    "华文行楷": "STXINGKA.TTF",
+    "华文琥珀": "STHUPO.TTF",
+    "华文楷体": "STKAITI.TTF",
+    "华文隶书": "STLITI.TTF",
+    "华文宋体": "STSONG.TTF",
+    "华文细黑": "STXIHEI.TTF",
+    "华文新魏": "STXINWEI.TTF",
+    "华文中宋": "STZHONGS.TTF",
+    "楷体": "simkai.ttf",
+    "隶书": "SIMLI.TTF",
+    "宋体": "simsun.ttc",
+    "微软雅黑 常规": "msyh.ttc",
+    "微软雅黑 粗体": "msyhbd.ttc",
+    "微软雅黑 细体": "msyhl.ttc",
+    "新宋体": "simsun.ttc",
+    "幼圆": "SIMYOU.TTF",
+}
+
 def importFont(name, path):
+    # print(name, " ",path)
     reportlab.pdfbase.pdfmetrics.registerFont(reportlab.pdfbase.ttfonts.TTFont(name, path))
 
 class Doc:
@@ -100,6 +132,11 @@ class ReportElement:
             self.padding_r=padding
             self.padding=[self.padding_r[0]*pw, self.padding_r[1]*ph]
     def getParentRect(self):
+        if hasattr(self.par, "par"):
+            xx, yy, ww, hh=self.par.getParentRect()
+        else:
+            xx=0
+            yy=0
         w = self.par.w
         h = self.par.h
         if hasattr(self.par, 'pos'):
@@ -108,7 +145,7 @@ class ReportElement:
         else:
             x = 0
             y = 0
-        return [x, y, w, h]
+        return [x+xx, y+yy, w, h]
     def getRect(self, y_up):
         x,y,w,h=self.getParentRect()
         if y_up==False:
@@ -122,14 +159,6 @@ class ReportElement:
         xx=x+self.pos[0]+self.padding[0]
         yy=doc.h - (y+self.pos[1]+self.padding[1] + hh)
         return [xx, yy, ww, hh]
-    def getDrawRectWithPageCheck(self, doc):
-        if doc==self.par:
-            x,y,w,h=self.getDrawRect(doc)
-            if y>doc.h:
-                y = y-doc
-                doc.newPage()
-            return [x,y,w,h]
-        return self.getDrawRect(doc)
     def getVal(self, attr, def_val):
         if hasattr(self, attr):
             t = ''.join(['self.', attr])
@@ -146,8 +175,12 @@ class ReportElement:
         if hasattr(self, 'child'):
             for ch in self.child:
                 ch.draw(doc)
-
-
+class RepEleNewPage(ReportElement):
+    "new page"
+    def __init__(self, par):
+        ReportElement.__init__(self, par)
+    def draw(self, doc, is_draw_child=True):
+        doc.newPage()
 # set params:
 # { "has_border":True, "border_color":Report.Colors.red, "border_width":5, "border_expand":0, "is_fill":True, "fill_color":Report.Colors.yellowgreen, "is_round": True, "round_radius":5}
 class RepEleRect(ReportElement):
@@ -195,7 +228,8 @@ class RepEleRect(ReportElement):
     def getBorderRadius(self):
         return self.getAbsRelativeVal("round_radius", 3, 0.03, self.par.w)
     def draw(self, doc, is_draw_child=True):
-        x, y, w, h=self.getDrawRectWithPageCheck(doc)
+        # print("ReportRect", self.getParentRect(), self.getDrawRect(doc))
+        x, y, w, h=self.getDrawRect(doc)
         _doc=doc.getDoc()
         border_width=self.getBorderWidth()
         _doc.setLineWidth(border_width)
@@ -245,9 +279,10 @@ class RepEleGrid(RepEleRect):
     def getLineWidth(self):
         return self.getAbsRelativeVal("line_width", 1, 0.001, self.par.w)
     def draw(self, doc, is_draw_child=True):
+        # print("ReportGrid", self.getParentRect(), self.getDrawRect(doc))
         RepEleRect.draw(self, doc, False)
 
-        x,y,w,h=self.getDrawRectWithPageCheck(doc)
+        x,y,w,h=self.getDrawRect(doc)
         _doc=doc.getDoc()
         border_width = self.getBorderWidth()
         expand_dir = 1-self.getVal('border_expand', 0)
@@ -289,7 +324,6 @@ class RepEleGrid(RepEleRect):
         # children
         if is_draw_child:
             self.drawChild(doc)
-
 # set params:
 # {'size': [1.0, 0.5], "pos": [0.0, 0.25], "is_abs": False, "padding": [0.0, 0.0], "has_border": True, "border_color": Report.Colors.red, "border_width": 0.01, "border_expand": 0, "img_path": "", "keep_aspect":True}
 class RepEleImage(ReportElement):
@@ -332,7 +366,8 @@ class RepEleImage(ReportElement):
         return self.getAbsRelativeVal("border_width", 1, 0.01, self.par.w)
     def draw(self, doc, is_draw_child=True):
         # draw border
-        x, y, w, h = self.getDrawRectWithPageCheck(doc)
+        # print("ReportImage", self.getParentRect(), self.getDrawRect(doc))
+        x, y, w, h = self.getDrawRect(doc)
 
         if hasattr(self, "img")==True:
             _doc = doc.getDoc()
@@ -443,7 +478,11 @@ class RepEleText(ReportElement):
             reportlab.pdfbase.pdfmetrics.getFont(font)
             return font
         except Exception  as e:
-            return "Times-Roman"
+            if font in font_name_mapping and os.path.exists(sys_font_dir+font_name_mapping[font]):
+                importFont(font, sys_font_dir+font_name_mapping[font])
+                return font
+            else:
+                return "Times-Roman"
     def getStringWidth(self, doc, str, font, font_size):
         len=doc.getDoc().stringWidth(str, font, font_size)
         for c in str:
@@ -475,10 +514,12 @@ class RepEleText(ReportElement):
         return ret
 
     def draw(self, doc, is_draw_child=True):
-        x, y, w, h = self.getDrawRectWithPageCheck(doc)
+        # print("ReportString", self.getParentRect(), self.getDrawRect(doc))
+        x, y, w, h = self.getDrawRect(doc)
         _doc=doc.getDoc()
         font=self.getFont(doc)
-        font_size=self.font_size
+        font_size=self.getAbsRelativeVal("font_size", 9, 0.01, self.par.w)
+        # font_size=self.font_size
         y = y + h - font_size
         to=_doc.beginText()
         to.setTextOrigin(x, y)
@@ -502,7 +543,7 @@ class RepEleText(ReportElement):
 
         #
         cur_h=0
-        lines=self.text.strip().split(u'\n')
+        lines=self.text.split(u'\n')
         lines_to_draw=[]
         if w >= font_size:
             for line in lines:

@@ -1,0 +1,5 @@
+0.2
+0.5 0.5
+text image
+Python 面向对象\nPython从设
+G:/C++/p2a/p2a_master_check/p2aBenchmark/andriodBenchmark/pushFiles/nv/26.png
