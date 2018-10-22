@@ -59,7 +59,7 @@ class ReportRow:
             ret["font"]="宋体"
             ret["font_size"]=0.01
         elif "image"==type:
-            ret["padding"]=[0.006, 0.006]
+            ret["padding"]=[0.001, 0.009]
         elif "grid"==type:
             ret["border_expand"]=0
             ret["border_width"]=0.001
