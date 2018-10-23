@@ -1,4 +1,5 @@
 #coding=utf-8
+# author: yixuan, lu
 
 # pip3 install ReportLab
 
@@ -518,7 +519,7 @@ class RepEleText(ReportElement):
         x, y, w, h = self.getDrawRect(doc)
         _doc=doc.getDoc()
         font=self.getFont(doc)
-        font_size=self.getAbsRelativeVal("font_size", 9, 0.01, self.par.w)
+        font_size=self.getAbsRelativeVal("font_size", 9, 0.01, self.par.h)
         # font_size=self.font_size
         y = y + h - font_size
         to=_doc.beginText()

@@ -34,19 +34,19 @@ ele.set({ 'size':[0.5,0.5], "pos":[0.25, 0.25], "is_abs":True, "padding":[0.1,0.
     - has_border: draw border or not
     - border_color: border's color, type of Request.Colors.color
     - border_width: border's width, metric relative to "is_abs"
-    - border_expand: 
+    - border_expand:
       - < 0: inside
       - = 0: half outside, half inside
       - \> 0: outside
     - is_fill: draw background or not
     - fill_color: background's color
-    - is_round: 
+    - is_round:
     - round_radius: metric relative to "is_abs"
     - see ReportElement
 
 ```C
 rect = Report.RepEleRect(doc)
-config_rect = {'size': [0.5, 0.5], "pos": [0, 0], "is_abs": False, 
+config_rect = {'size': [0.5, 0.5], "pos": [0, 0], "is_abs": False,
 	"padding": [0, 0], "has_border": True, "border_color": Report.Colors.red,
 	"border_width": 0.01, "border_expand": -1, "is_fill": True,
 	"fill_color": Report.Colors.yellowgreen}
@@ -64,7 +64,7 @@ rect.draw(doc)
 
 ```C
 //rows/cols: ratio among rows/cols
-config_grid = {'size': [0.8, 0.8], "pos": [0.1, 0.1], "is_abs": False, 
+config_grid = {'size': [0.8, 0.8], "pos": [0.1, 0.1], "is_abs": False,
 	"padding": [0.1, 0], "has_border": True, "border_width": 0.01,
 	"border_color": Report.Colors.red, "border_expand": 0, "is_fill": True,
 	"fill_color": Report.Colors.aliceblue, "is_round": True, "round_radius": 0.05,
@@ -90,7 +90,7 @@ rect.draw(doc)
 
 ```C
 config_img = {'size': [0.5, 0.2], "pos": [0.0, 0.25], "is_abs": False,
-	"padding": [0.0, 0.0], "has_border": False, "border_color": Report.Colors.red, 
+	"padding": [0.0, 0.0], "has_border": False, "border_color": Report.Colors.red,
 	"border_width": 0.01, "border_expand": 0,"img_path": "",
 	"keep_aspect": True}
 img = Report.RepEleImage(doc)
@@ -116,7 +116,7 @@ img.draw(doc)
     - rise: superscript, subscript
 
 ```C
-// import font for chiness
+// import font for Chinese
 Report.importFont("华文行楷","C:/Program Files (x86)/Microsoft Office/root/VFS/Fonts/private/STXINGKA.TTF")
 
 config_txt={"size":size, "pos":pos, "is_abs":True,
@@ -126,4 +126,36 @@ txt.set(config_txt)
 txt.setText("reportlab不是python的标准库，它的强大之处在于能满足绝大部分报表的需求形式。")
 // draw
 txt.draw(doc)
+```
+
+# assist function
+- Assist.jsonTemplate2Json
+
+```C
+{
+  "height":0.1,//height of each row
+  "ratio":[0.3, 0.5, 0.2],//ratio between cols
+  "type": ["text", "image", "image"],//types of each col
+  "rows":[
+    ["\tPython 面向对象", "test_img/25.png","test_img/25.png"],
+    ["Python 面向对象", "test_img/27.png","test_img/27.png"]
+  ]
+  //optional
+  ,
+  "setting":[
+    {
+      "font_size":0.03,
+      ...
+    },
+    {
+      "keep_aspect":false,
+      ...
+    },
+    {
+      "keep_aspect":false,
+      ...
+    }
+  ]
+}
+
 ```

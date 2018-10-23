@@ -1,3 +1,6 @@
+#coding=utf-8
+# author: yixuan, lu
+
 import utilites.report.Report as Report
 import json
 import copy
@@ -180,6 +183,12 @@ def jsonTemplate2Json(fn):
     row_height=values["height"]
     ratio=values["ratio"]
     type=values["type"]
+    if "setting" in values:
+        setting=values["setting"]
+    else:
+        setting=[]
+        for i in range(0, len(ratio)):
+            setting.append({})
 
     rows=values["rows"]
     pages = ReportFile()
@@ -191,6 +200,8 @@ def jsonTemplate2Json(fn):
             if "image"==type[i] and os.path.exists(row[i])==False:
                 row[i]=os.path.join(os.path.split(fn)[0],row[i])
             tmp = {"type": type[i], "size": [ratio[i], 1.0], map[type[i]]: row[i]}
+            for str in setting[i]:
+                tmp[str]=setting[i][str]
             r.add(tmp)
         pages.addRow(r.getResult())
     return json.dumps(pages.getResult())
