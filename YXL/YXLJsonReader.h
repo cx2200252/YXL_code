@@ -1,8 +1,8 @@
 #ifndef _YXL_JSON_READER_H_
 #define _YXL_JSON_READER_H_
 
-#include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
+#include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
 #include <fstream>
 #include <string>
 #include <vector>

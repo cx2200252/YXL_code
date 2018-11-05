@@ -19,8 +19,8 @@
 //#define _YXL_MINI_Z_
 //#define _YXL_HASH_
 //#define _YXL_CIPHER_
-#define _YXL_CRYPTO_
-#define _YXL_ENCRYPT_DATA_
+//#define _YXL_CRYPTO_
+//#define _YXL_ENCRYPT_DATA_
 //#define _YXL_GLFW_
 
 #include <string>
@@ -34,6 +34,7 @@
 #include <queue>
 #include <algorithm>
 #include <stack>
+#include <thread>
 
 #pragma warning(disable:4819)
 #ifdef YXL_HELPER_DYNAMIC
@@ -150,9 +151,10 @@ namespace YXL
 #endif
 
 #ifdef _YXL_OTHER_
+#include <sstream>
 namespace YXL
 {
-	inline long long MakeLongLong(const unsigned int a, const unsigned int b)
+	inline unsigned long long MakeLongLong(const unsigned int a, const unsigned int b)
 	{
 		return ((unsigned long long)a) << 32 | (unsigned long long)b;
 	}
@@ -162,15 +164,31 @@ namespace YXL
 		return std::make_pair((unsigned int)(l >> 32), (unsigned int)(l & 0xffffffff));
 	}
 
-	inline int GetCurrentThreadID()
+	inline unsigned long long GetCurrentThreadID()
 	{
-#if defined(_WITH_WINDOWS_)
-		return GetCurrentThreadId();
-#elif defined(__linux__)
-		return gettid();
-#else
-		return 0;
-#endif
+		auto thread_id = std::this_thread::get_id();
+		std::stringstream id_txt;
+		id_txt << thread_id;
+		return std::atoll(id_txt.str().c_str());
+	}
+
+	template<typename type> type Random()
+	{
+		std::random_device r;
+		std::uniform_int_distribution<> dist;
+		std::seed_seq seed2{ r(), r(), r(), r(), r(), r(), r(), r() };
+		std::mt19937 e2(seed2);
+		return dist(e2);
+	}
+
+	template<typename type> void Random(type* buf, size_t len)
+	{
+		std::random_device r;
+		std::uniform_int_distribution<> dist;
+		std::seed_seq seed2{ r(), r(), r(), r(), r(), r(), r(), r() };
+		std::mt19937 e2(seed2);
+		for (size_t i(0); i != len; ++i)
+			buf[i] = dist(e2);
 	}
 }
 #endif
@@ -934,9 +952,6 @@ namespace YXL
 #endif
 
 #ifdef _YXL_TIME_
-#ifdef __linux__
-#include <system.h>
-#endif
 namespace YXL
 {
 	inline std::string GetCurTime(const char* format_ymd_hms)
@@ -957,13 +972,7 @@ namespace YXL
 
 	inline void Sleep(double ms)
 	{
-#if defined(_WITH_WINDOWS_)
-		::Sleep(ms);
-#elif defined(__linux__)
-		usleep(ms*1000.);
-#else
-		std::cout << "no sleep function" << std::endl;
-#endif
+		std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<long long>(ms)));
 	}
 
 	template<typename type> double TimeElapsedMS(type start, type end)
@@ -1689,10 +1698,12 @@ namespace YXL
 		class Zip
 		{
 		public:
-			Zip(std::shared_ptr<const char> data, const size_t size, const bool is_unzip);
-			Zip(const std::string& content, const bool is_unzip);
+			Zip();
+			Zip(std::shared_ptr<const char> data, const size_t size, const bool is_unzip=true);
+			Zip(const std::string& content, const bool is_unzip=true);
 
 			bool IsFine() const;
+			bool Unzip();
 			bool ToZip(std::shared_ptr<char>& zip, size_t& zip_size, const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
 
 			void AddFile(const std::string& fn, std::shared_ptr<const char> data, const size_t size);
@@ -1730,8 +1741,8 @@ namespace YXL
 				const ZIP_COMPRESSION compression = ZIP_COMPRESSION::DEFAULT_LEVEL);
 
 		private:
-			std::shared_ptr<const char> _data;
-			size_t _size;
+			std::shared_ptr<const char> _data = nullptr;
+			size_t _size = 0;
 			std::string _content;
 
 			//
@@ -1763,7 +1774,7 @@ namespace YXL
 				if (key.length() != len)
 				{
 					key.resize(len, ' ');
-					std::cout << txt << " resize to \"" << key << "\"" << std::endl;
+					//std::cout << txt << " resize to \"" << key << "\"" << std::endl;
 				}
 			}
 		};
@@ -1778,18 +1789,29 @@ namespace YXL
 				CheckKey(crypto_secretbox_KEYBYTES, _key, "key");
 			}
 
+			static void GenKey(std::string& key)
+			{
+				key.resize(crypto_secretbox_KEYBYTES);
+				Random(&key[0], key.length());
+			}
+
 			void Encrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
 			{
+				std::string _in(crypto_secretbox_ZEROBYTES + in_size, '\0');
+				memcpy(&_in[0] + crypto_secretbox_ZEROBYTES, in, in_size);
+
 				CheckKey(crypto_secretbox_NONCEBYTES, nonce, "nonce");
-				out.resize(in_size);
-				Tweetnacl::crypto_secretbox((KeyType*)&out[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_key.c_str());
+				out.resize(_in.size());
+				Tweetnacl::crypto_secretbox((KeyType*)&out[0], (const KeyType*)&_in[0], _in.length(), (const KeyType*)nonce.c_str(), (const KeyType*)_key.c_str());
 			}
 
 			void Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
 			{
 				CheckKey(crypto_secretbox_NONCEBYTES, nonce, "nonce");
-				out.resize(in_size);
-				Tweetnacl::crypto_secretbox_open((KeyType*)&out[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_key.c_str());
+				std::string tmp;
+				tmp.resize(in_size);
+				Tweetnacl::crypto_secretbox_open((KeyType*)&tmp[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_key.c_str());
+				out = tmp.substr(crypto_secretbox_ZEROBYTES, tmp.length() - crypto_secretbox_ZEROBYTES);
 			}
 
 		private:
@@ -1805,8 +1827,14 @@ namespace YXL
 			{
 				CheckKey(crypto_box_PUBLICKEYBYTES, _pub_key_B, "public key");
 				CheckKey(crypto_box_SECRETKEYBYTES, _sec_key_A, "secret key");
-				_k.resize(crypto_box_BEFORENMBYTES);
-				Tweetnacl::crypto_box_beforenm((KeyType*)&_k[0], (const KeyType*)_pub_key_B.c_str(), (const KeyType*)_sec_key_A.c_str());
+
+				KeyType pk[] = { 171,8,211,221,154,45,113,140,117,129,44,94,134,84,53,190,117,145,42,121,134,160,235,125,133,183,80,181,15,77,245,88 };
+				KeyType sk[] = { 65,49,82,125,180,123,250,162,138,235,199,77,176,167,196,202,119,104,21,167,139,56,179,221,162,11,106,153,155,166,1,174 };
+
+				_k_encrypt.resize(crypto_box_BEFORENMBYTES);
+				_k_decrypt.resize(crypto_box_BEFORENMBYTES);
+				Tweetnacl::crypto_box_beforenm((KeyType*)&_k_encrypt[0], (const KeyType*)_pub_key_B.c_str(), (const KeyType*)sk);
+				Tweetnacl::crypto_box_beforenm((KeyType*)&_k_decrypt[0], (const KeyType*)pk, (const KeyType*)sec_key_A.c_str());
 			}
 
 			static void GenKeyPair(std::string& pk, std::string& sk)
@@ -1818,21 +1846,27 @@ namespace YXL
 
 			void Encrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
 			{
+				std::string _in(crypto_secretbox_ZEROBYTES + in_size, '\0');
+				memcpy(&_in[0] + crypto_secretbox_ZEROBYTES, in, in_size);
+
 				CheckKey(crypto_secretbox_NONCEBYTES, nonce, "nonce");
-				out.resize(in_size);
-				Tweetnacl::crypto_box_afternm((KeyType*)&out[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_k.c_str());
+				out.resize(_in.size());
+				Tweetnacl::crypto_box_afternm((KeyType*)&out[0], (const KeyType*)&_in[0], _in.length(), (const KeyType*)nonce.c_str(), (const KeyType*)_k_encrypt.c_str());
 			}
 			void Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
 			{
 				CheckKey(crypto_secretbox_NONCEBYTES, nonce, "nonce");
-				out.resize(in_size);
-				Tweetnacl::crypto_box_open_afternm((KeyType*)&out[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_k.c_str());
+				std::string tmp;
+				tmp.resize(in_size);
+				Tweetnacl::crypto_box_open_afternm((KeyType*)&tmp[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_k_decrypt.c_str());
+				out = tmp.substr(crypto_secretbox_ZEROBYTES, tmp.length() - crypto_secretbox_ZEROBYTES);
 			}
 			
 		private:
 			std::string _sec_key_A;
 			std::string _pub_key_B;
-			std::string _k;
+			std::string _k_encrypt;
+			std::string _k_decrypt;
 		};
 
 		class SignerBase
@@ -1894,13 +1928,37 @@ namespace YXL
 			std::string _pub_key_B;
 		};
 
-		class CryptData
+		template<typename Sys, typename Asym> class EncryptedData
 		{
 		public:
-			CryptData(CStr&);
+			static void Pack(std::string& out, CStr& data, CStr& pub_key, CStr key, CStr nonce = "")
+			{
+				Sys sys(key);
+				std::string tmp, tmp2;
+				sys.Encrypt(tmp, data.c_str(), data.length(), nonce);
+				Asym asym("", pub_key);
+				asym.Encrypt(tmp2, key.c_str(), key.length(), nonce);
 
-
+				out.resize(tmp.length() + tmp2.length() + 4);
+				int a = tmp2.length();
+				auto ptr = &out[0];
+				memcpy(ptr, &a, sizeof(a));
+				memcpy(ptr + sizeof(a), tmp2.c_str(), tmp2.length());
+				memcpy(ptr + sizeof(a) + tmp2.length(), tmp.c_str(), tmp.length());
+			}
+			static void Unpack(std::string& out, CStr& data, CStr& sec_key, CStr nonce = "")
+			{
+				Asym asym(sec_key, "");
+				std::string key;
+				auto ptr = data.c_str();
+				int len = ((int*)ptr)[0];
+				asym.Decrypt(key, ptr + sizeof(int), len, nonce);
+				Sys sys(key);
+				sys.Decrypt(out, ptr + sizeof(int) + len, data.length() - sizeof(int) - len, nonce);
+			}
 		};
+
+		typedef EncryptedData<DefSymEncryptor, DefAsymEncryptor> DefEncryptedData;
 	}
 }
 

@@ -888,6 +888,10 @@ namespace YXL
 			{ ZIP_COMPRESSION::DEFAULT_LEVEL, MZ_DEFAULT_LEVEL},
 		};
 
+		Zip::Zip()
+		{
+		}
+
 		Zip::Zip(std::shared_ptr<const char> data, const size_t size, const bool is_unzip)
 		{
 			if (false == is_unzip)
@@ -909,6 +913,15 @@ namespace YXL
 
 		bool Zip::IsFine() const
 		{
+			return _is_fine;
+		}
+
+		bool Zip::Unzip()
+		{
+			if (_content.empty())
+				return true;
+			_is_fine = Unzip(_files, _content.c_str(), _content.size(), false);
+			_content = "";
 			return _is_fine;
 		}
 

@@ -1,5 +1,6 @@
 #ifndef TWEETNACL_H_STAND_ALONE_
 #define TWEETNACL_H_STAND_ALONE_
+#include <random>
 namespace Tweetnacl
 {
 
@@ -253,11 +254,16 @@ typedef unsigned long nacl_u32;
 typedef unsigned long long u64;
 typedef long long i64;
 typedef i64 gf[16];
+
 static void randombytes(u8 *buf,u64 size){
-	/* QM: We're not supposed to do anything needing entropy in our final library */
-	/*for(;;){
-		++*buf++;
-	}*/
+	//YXL
+	std::random_device r;
+
+	std::uniform_int_distribution<> dist;
+	std::seed_seq seed2{ r(), r(), r(), r(), r(), r(), r(), r() };
+	std::mt19937 e2(seed2);
+	for (int i(0); i != size; ++i)
+		buf[i] = dist(e2);
 }
 
 static const u8

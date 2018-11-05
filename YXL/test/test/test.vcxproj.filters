@@ -14,17 +14,38 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
     <Filter Include="YXL">
-      <UniqueIdentifier>{aa5517ef-d286-41e0-9a65-e077487bd331}</UniqueIdentifier>
+      <UniqueIdentifier>{be522075-6cbd-4a27-89b2-dc98c68f853e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YXL\miniz">
+      <UniqueIdentifier>{eb8d3caa-b397-4a9d-be2c-4cd4a7eb1c93}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="test.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="test_json.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\miniz\miniz.c">
+      <Filter>YXL\miniz</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\YXLHelper.cpp">
+      <Filter>YXL</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\readme.md">
-      <Filter>资源文件</Filter>
-    </None>
+    <ClInclude Include="test.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\miniz\miniz.h">
+      <Filter>YXL\miniz</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\YXLHelper.h">
+      <Filter>YXL</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
