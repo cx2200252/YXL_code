@@ -14,6 +14,7 @@ namespace YXL_TEST
 
 	void TestJson();
 	void TestZip();
-	void TestEncryptedData();
+	void TestNaCL();
+	void TestCrypto();
 
 }

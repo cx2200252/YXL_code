@@ -1,5 +1,7 @@
-#include "../../YXLJsonReader.h"
+#include "../../YXLJsonWarpper.h"
 #include "../../YXLHelper.h"
+#include "../../YXLJsonStruct.h"
+#include "test.h"
 
 
 struct TestNode
@@ -22,10 +24,10 @@ namespace YXL
 				rapidjson::Value value(rapidjson::Type::kObjectType);
 				auto& alloc = doc.GetAllocator();
 
-				value.AddMember(JsonParseCStr("f", doc), val.f, alloc);
-				value.AddMember(JsonParseCStr("i", doc), val.i, alloc);
-				value.AddMember(JsonParseCStr("s", doc), JsonParseStr(val.s, doc), alloc);
-				value.AddMember(JsonParseCStr("vecI", doc), ToJsonValueVec(int, val.vec, doc), alloc);
+				value.AddMember(JsonParseCString("f", doc), val.f, alloc);
+				value.AddMember(JsonParseCString("i", doc), val.i, alloc);
+				value.AddMember(JsonParseCString("s", doc), JsonParseString(val.s, doc), alloc);
+				value.AddMember(JsonParseCString("vecI", doc), ToJsonValueVec(int, val.vec, doc), alloc);
 
 				return value;
 			}
@@ -38,7 +40,7 @@ namespace YXL
 				TestNode node;
 				node.f = JsonGetFloat(val["f"]);
 				node.i = JsonGetInt(val["i"]);
-				node.s = JsonGetStr(val["s"]);
+				node.s = JsonGetString(val["s"]);
 				node.vec = FromJsonValueVec(int, val["vecI"]);
 				return node;
 			}
@@ -47,7 +49,7 @@ namespace YXL
 				//check all members' type if necessary
 				return JsonValHasMemberAndIsFloat(val, "f")
 					&& JsonValHasMemberAndIsInt(val, "i")
-					&& JsonValHasMemberAndIsStr(val, "s")
+					&& JsonValHasMemberAndIsString(val, "s")
 					&& JsonValHasMemberAndIsIntVec(val, "vecI");
 			}
 		};
@@ -58,7 +60,7 @@ namespace YXL_TEST
 {
 	void TestJson()
 	{
-		const std::string test_json = "test_json.json";
+		const std::string test_json = GetTestDir() + "test_json.json";
 		//if(false)
 		{
 			if(true==YXL::File::FileExist(test_json))
@@ -146,6 +148,20 @@ namespace YXL_TEST
 			}
 
 			json->Save(test_json);
+		}
+
+		//test json struct
+		{
+			auto json = YXL::JSON::Json::New(GetTestDir()+"test_struct.json");
+			auto& root = json->GetRoot();
+			std::map<std::string, std::shared_ptr<YXL::JSON::ParamBase>> items;
+			for (auto iter = root.MemberBegin(); iter != root.MemberEnd(); ++iter)
+			{
+				auto name = JsonGetString(iter->name);
+				auto tmp = json->ReadValue(name, std::shared_ptr<YXL::JSON::ParamBase>(nullptr));
+				if (tmp)
+					items[name] = tmp;
+			}
 		}
 	}
 }

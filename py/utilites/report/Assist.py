@@ -1,7 +1,10 @@
 #coding=utf-8
 # author: yixuan, lu
 
-import utilites.report.Report as Report
+# import sys
+# sys.path.append(".")
+
+import Report
 import json
 import copy
 import os
@@ -60,7 +63,7 @@ class ReportRow:
         ret={"is_abs":False, "padding":[0.002, 0.002]}
         if "text"==type:
             ret["font"]="宋体"
-            ret["font_size"]=0.01
+            ret["font_size"]=0.1
         elif "image"==type:
             ret["padding"]=[0.001, 0.009]
         elif "grid"==type:
@@ -205,3 +208,11 @@ def jsonTemplate2Json(fn):
             r.add(tmp)
         pages.addRow(r.getResult())
     return json.dumps(pages.getResult())
+
+def jsonTemplate2Pdf(fn):
+    temp = jsonTemplate2Json(fn)
+    fn_pdf = os.path.splitext(fn)[0]+".pdf"
+    doc = Report.Doc(fn_pdf, Report.PageSizes.A4)
+    drawer = Json2PDF()
+    drawer.DrawJson(temp, doc)
+    doc.saveDoc()

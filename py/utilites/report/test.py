@@ -1,6 +1,6 @@
-import utilites.report.Report as Report
-import utilites.report.Assist as Assist
-import json
+
+from . import Report
+from . import Assist
 
 def testGrid(doc):
     rect = Report.RepEleRect(doc)
@@ -62,9 +62,4 @@ def testText(doc):
 
 if __name__=="__main__":
     # temp = Assist.textTemplate2Json("test/test.txt")
-    temp = Assist.jsonTemplate2Json("test/test.json")
-
-    doc = Report.Doc("test/A3.pdf", Report.PageSizes.A3)
-    drawer=Assist.Json2PDF()
-    drawer.DrawJson(temp, doc)
-    doc.saveDoc()
+    Assist.jsonTemplate2Pdf("G:/C++/p2a/p2a/p2a_client/result/rep/report.json")

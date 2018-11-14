@@ -24,8 +24,9 @@ namespace YXL_TEST
 		{
 			if (i)
 				std::cout << ",";
-			std::cout << (unsigned int)(unsigned char)key[i] << std::endl;
+			std::cout << (unsigned int)(unsigned char)key[i];
 		}
+		std::cout << std::endl;
 	}
 
 	void TestZip()
@@ -35,7 +36,7 @@ namespace YXL_TEST
 		std::cout << "miniz not enable..." << std::endl;
 #else
 		{
-			std::cout << "*********test create zip*********" << std::endl;
+			std::cout << "---------test create zip---------" << std::endl;
 			YXL::ZIP::Zip zip;
 			zip.AddFile("1.txt", "1\nabc abc\n 3.14");
 			zip.AddFile("2.txt", "test create");
@@ -46,7 +47,7 @@ namespace YXL_TEST
 				SaveTestFile("test_zip_1.zip", ptr.get(), size);
 		}
 		{
-			std::cout << "*********load & add with unzip*********" << std::endl;
+			std::cout << "---------load & add with unzip---------" << std::endl;
 			std::string zip_content;
 			GetTestFile("test_zip_1.zip", zip_content);
 			YXL::ZIP::Zip zip(zip_content, true);
@@ -65,7 +66,7 @@ namespace YXL_TEST
 
 			zip.AddFile("3.txt", "123456");
 
-			std::cout << "*********test file reading*********" << std::endl;
+			std::cout << "---------test file reading---------" << std::endl;
 			auto f = files["1.txt"];
 			std::cout << "int: " << f->ReadInt() << std::endl;
 			std::cout << "char: " << f->ReadChar() << std::endl;
@@ -80,7 +81,7 @@ namespace YXL_TEST
 				SaveTestFile("test_zip_2.zip", ptr.get(), size);
 		}
 		{
-			std::cout << "*********load & add without unzip*********" << std::endl;
+			std::cout << "---------load & add without unzip---------" << std::endl;
 			std::string zip_content;
 			GetTestFile("test_zip_1.zip", zip_content);
 			YXL::ZIP::Zip zip(zip_content, false);
@@ -107,93 +108,313 @@ namespace YXL_TEST
 #endif
 	}
 
-	void TestEncryptedData()
+	void TestNaCL()
 	{
 		std::cout << "*********************************************************************************" << std::endl;
-#ifndef _YXL_ENCRYPT_DATA_
-		std::cout << "encrypted data not enable..." << std::endl;
+#ifndef _YXL_NACL_
+		std::cout << "NaCL not enable..." << std::endl;
 #else
 		typedef std::pair<std::string, std::string> KeyPair;
 
 		{
-			std::cout << "*********test default signer*********" << std::endl;
+			std::cout << "---------test signer---------" << std::endl;
 			CStr test = "abcdef123456789";
 			KeyPair a, b;
-			YXL::Crypt::DefSigner::GenKeyPair(a.first, a.second);
-			YXL::Crypt::DefSigner::GenKeyPair(b.first, b.second);
-			printf("pk len(in byte): %d\nsk len(in byte): %d\n", a.first.length(), a.second.length());
+			YXL::Crypt::SignerNaCL::GenKeyPair(a.first, a.second);
+			YXL::Crypt::SignerNaCL::GenKeyPair(b.first, b.second);
+			printf("pk len(in byte): %d\nsk len(in byte): %d\n", (int)a.first.length(), (int)a.second.length());
 
-			YXL::Crypt::DefSigner signA(a.second, b.first);
-			YXL::Crypt::DefSigner signB(b.second, a.first);
+			YXL::Crypt::SignerNaCL signA(a.second, b.first);
+			YXL::Crypt::SignerNaCL signB(b.second, a.first);
 
 			std::string ret;
-			signA.Sign(ret, test.c_str(), test.length());
-			printf("src text len(in byte): %d\nsigned text len(in byte): %d\n", test.length(), ret.length());
+			signA.Sign(ret, test.c_str(), (int)test.length());
+			printf("src text len(in byte): %d\nsigned text len(in byte): %d\n", (int)test.length(), (int)ret.length());
 
-			std::string ret2;
-			auto flag = signB.Verify(ret2, ret.c_str(), ret.length());
-			std::cout << "verify result: " << flag << std::endl;
+			auto flag = signB.Verify(ret, test.c_str(), (int)test.length());
+			std::cout << "verify result: " << (flag?"true":"false") << std::endl;
 		}
 		{
-			std::cout << "*********test default sys encryptor*********" << std::endl;
+			std::cout << "---------test sys encryptor---------" << std::endl;
 			std::string key;
-			YXL::Crypt::DefSymEncryptor::GenKey(key);
-			printf("key len(in byte): %d\n", key.length());
+			YXL::Crypt::SymEncryptorNaCL::GenKey(key);
+			printf("key len(in byte): %d\n", (int)key.length());
 
 			CStr test = "abcdef123456789";
 			CStr nonce = "";
 
-			YXL::Crypt::DefSymEncryptor encryptor(key);
+			YXL::Crypt::SymEncryptorNaCL encryptor(key);
 			std::string ret;
-			encryptor.Encrypt(ret, test.c_str(), test.length(), nonce);
+			encryptor.Encrypt(ret, test.c_str(), (int)test.length(), nonce);
 			std::cout << "src text: " << test << std::endl;
-			printf("src text len(in byte): %d\nencrypted text len(in byte): %d\n", test.length(), ret.length());
+			printf("src text len(in byte): %d\nencrypted text len(in byte): %d\n", (int)test.length(), (int)ret.length());
 
 			std::string ret2;
-			encryptor.Decrypt(ret2, ret.c_str(), ret.length(), nonce);
+			encryptor.Decrypt(ret2, ret.c_str(), (int)ret.length(), nonce);
 			std::cout << "decrypted text: " << ret2 << std::endl;
 		}
 		{
-			std::cout << "*********test default asym encryptor*********" << std::endl;
+			std::cout << "---------test asym encryptor---------" << std::endl;
 			KeyPair a, b;
-			YXL::Crypt::DefAsymEncryptor::GenKeyPair(a.first, a.second);
-			YXL::Crypt::DefAsymEncryptor::GenKeyPair(b.first, b.second);
+			YXL::Crypt::AsymEncryptorNaCL::GenKeyPair(a.first, a.second);
+			YXL::Crypt::AsymEncryptorNaCL::GenKeyPair(b.first, b.second);
 
-			printf("pk len(in byte): %d\nsk len(in byte): %d\n", a.first.length(), a.second.length());
+			printf("pk len(in byte): %d\nsk len(in byte): %d\n", (int)a.first.length(), (int)a.second.length());
 
 			CStr test = "abcdef123456789";
 			CStr nonce = "";
 
-			YXL::Crypt::DefAsymEncryptor encryptorA("", b.first);
-			YXL::Crypt::DefAsymEncryptor encryptorB(b.second, "");
+			YXL::Crypt::AsymEncryptorNaCL encryptorA("", b.first);
+			YXL::Crypt::AsymEncryptorNaCL encryptorB(b.second, "");
 
 			std::string ret;
-			encryptorA.Encrypt(ret, test.c_str(), test.length(), nonce);
+			encryptorA.Encrypt(ret, test.c_str(), (int)test.length(), nonce);
 			std::cout << "src text: " << test << std::endl;
-			printf("src text len(in byte): %d\nencrypted text len(in byte): %d\n", test.length(), ret.length());
+			printf("src text len(in byte): %d\nencrypted text len(in byte): %d\n", (int)test.length(), (int)ret.length());
 
 			std::string ret2;
-			encryptorB.Decrypt(ret2, ret.c_str(), ret.length(), nonce);
+			encryptorB.Decrypt(ret2, ret.c_str(), (int)ret.length(), nonce);
 			std::cout << "decrypted text: " << ret2 << std::endl;
 		}
 		{
-			std::cout << "*********test EncryptedData*********" << std::endl;
+			std::cout << "---------test EncryptedData---------" << std::endl;
 			KeyPair key;
-			YXL::Crypt::DefAsymEncryptor::GenKeyPair(key.first, key.second);
+			YXL::Crypt::AsymEncryptorNaCL::GenKeyPair(key.first, key.second);
 			std::string key2;
-			YXL::Crypt::DefSymEncryptor::GenKey(key2);
+			YXL::Crypt::SymEncryptorNaCL::GenKey(key2);
 
 			CStr test = "abcdef123456789";
 			CStr nonce = "";
 
 			std::string ret;
-			YXL::Crypt::DefEncryptedData::Pack(ret, test, key.first, key2, nonce);
+			YXL::Crypt::EncryptedDataNaCL::Pack(ret, test.c_str(), test.size(), key.first, key2, nonce);
 			std::string ret2;
-			YXL::Crypt::DefEncryptedData::Unpack(ret2, ret, key.second, "");
+			YXL::Crypt::EncryptedDataNaCL::Unpack(ret2, ret.c_str(), ret.size(), key.second, nonce);
 			std::cout << "src text: " << test << std::endl;
 			std::cout << "decrypted text: " << ret2 << std::endl;
+		}
+		{
+			std::cout << "---------test DataContainer---------" << std::endl;
+			CStr test_zip = GetTestDir() + "test_zip_3.zip";
+			if (false == YXL::File::FileExist(test_zip))
+			{
+				std::cout << "test zip not exist: " << test_zip << std::endl;
+			}
+			else
+			{
+				KeyPair key;
+				YXL::Crypt::AsymEncryptorNaCL::GenKeyPair(key.first, key.second);
+				std::string key2;
+				YXL::Crypt::SymEncryptorNaCL::GenKey(key2);
+
+				std::string zip;
+				YXL::File::LoadFileContentBinary(test_zip, zip);
+				CStr nonce = "";
+
+				std::string ret;
+				YXL::Crypt::EncryptedDataNaCL::Pack(ret, zip.c_str(), zip.size(), key.first, key2, nonce);
+
+				YXL::Crypt::DataContainerNaCL data(key.second);
+				data.Load(ret.c_str(), ret.size(), nonce);
+
+				std::cout << "1.txt exist: " << (data.FileExist("1.txt") ? "true" : "false") << std::endl;
+				std::cout << "4.txt exist: " << (data.FileExist("4.txt") ? "true" : "false") << std::endl;
+
+				auto f = data.GetFile("1.txt");
+				std::cout << "int: " << f->ReadInt() << std::endl;
+				std::cout << "char: " << f->ReadChar() << std::endl;
+				std::cout << "string: " << f->ReadString() << std::endl;
+				std::cout << "string: " << f->ReadString() << std::endl;
+				std::cout << "double: " << f->ReadDouble() << std::endl;
+			}
+			
 		}
 #endif
 	}
+
+	void TestCrypto()
+	{
+		std::cout << "*********************************************************************************" << std::endl;
+#ifndef _YXL_CRYPTO_
+		std::cout << "Cryptopp not enable..." << std::endl;
+#else
+		{
+			std::cout << "---------test hash---------" << std::endl;
+
+			CStr test = "abcdef123456789";
+
+#define Item(name) {#name, std::shared_ptr<YXL::Crypt::HasherCryptoPPBase > (new YXL::Crypt::Hasher##name)}
+			std::vector<std::pair<std::string, std::shared_ptr<YXL::Crypt::HasherCryptoPPBase>>> hasher = {
+				Item(MD5),
+				Item(SHA1),
+				Item(SHA224),
+				Item(SHA384),
+				Item(SHA512),
+				Item(SHA3_256),
+				Item(SHA3_384),
+				Item(SHA3_512),
+				Item(Tiger),
+				Item(RIPEMD128),
+				Item(RIPEMD160),
+				Item(Whirlpool),
+			};
+#undef Item
+
+			std::cout << "hash string:" << std::endl;
+
+			for (auto h : hasher)
+			{
+				std::string out;
+				h.second->Hash(out, test.c_str(), test.length());
+				std::cout << "\t" << h.first << ": " << out << std::endl;
+			}
+
+			std::cout << "hash file:" << std::endl;
+			SaveTestFile("hash.txt", test.c_str(), test.length());
+
+			for (auto h : hasher)
+			{
+				std::string out;
+				h.second->HashFile(out, GetTestDir() + "hash.txt");
+				std::cout << "\t" << h.first << ": " << out << std::endl;
+			}
+
+		}
+
+		{
+			std::cout << "---------test signer---------" << std::endl;
+
+			CStr test = "abcdef123456789";
+
+			std::pair<std::string, std::string> key_a, key_b;
+			std::string seed = YXL::Crypt::SignerRSA::GenSeed(1024);
+			YXL::Crypt::SignerRSA::GenKeyPair(key_a.first, key_a.second, seed, 512);
+			YXL::Crypt::SignerRSA::GenKeyPair(key_b.first, key_b.second, seed, 512);
+			printf("pk len(in byte): %d\nsk len(in byte): %d\n", (int)key_a.first.length(), (int)key_a.second.length());
+
+			YXL::Crypt::SignerRSA signer_a(key_a.second, key_b.first);
+			YXL::Crypt::SignerRSA signer_b(key_b.second, key_a.first);
+			{
+				std::cout << "sign string:" << std::endl;
+				std::string ret;
+				signer_a.Sign(ret, test.c_str(), test.length());
+				printf("\tsrc text len(in byte): %d\n\tsignature len(in byte): %d\n", (int)test.length(), (int)ret.length());
+
+				std::string ret2;
+				bool flag = signer_b.Verify(ret, test.c_str(), test.length());
+				std::cout << "\tverify result: " << (flag ? "true" : "false") << std::endl;
+
+				flag = signer_a.Verify(ret, test.c_str(), test.length());
+				std::cout << "\tverify result: " << (flag ? "true" : "false") << std::endl;
+			}
+			{
+				std::cout << "sign file:" << std::endl;
+
+				SaveTestFile("test_sign.txt", test.c_str(), test.length());
+
+				std::string ret;
+				signer_a.SignFile(ret, GetTestDir()+"test_sign.txt");
+				printf("\tsrc text len(in byte): %d\n\tsignature len(in byte): %d\n", (int)test.length(), (int)ret.length());
+
+				std::string ret2;
+				bool flag = signer_b.VerifyFile(ret, GetTestDir() + "test_sign.txt");
+				std::cout << "\tverify result: " << (flag ? "true" : "false") << std::endl;
+
+				flag = signer_a.VerifyFile(ret, GetTestDir() + "test_sign.txt");
+				std::cout << "\tverify result: " << (flag ? "true" : "false") << std::endl;
+			}
+			
+
+		}
+
+		{
+			std::cout << "---------test AES---------" << std::endl;
+
+			CStr test = "abcdef123456789";
+			const int key_len = 32;//aes256
+			CStr nonce = YXL::Crypt::EncryptorBase::GenRandomBuffer(key_len);
+			SaveTestFile("test_aes.txt", test.c_str(), test.length());
+			CStr fn_test = GetTestDir() + "test_aes.txt";
+
+#define _AES(mode) \
+			{\
+				std::cout << "mode: " << #mode << std::endl;\
+				auto key = YXL::Crypt::AES_##mode::GenKey(key_len);\
+				printf("key len(in byte): %d\n", (int)key.length());\
+				YXL::Crypt::AES_CBC aes(key);\
+				{\
+					std::cout << "encrypt string:" << std::endl;\
+					std::string cipher;\
+					aes.Encrypt(cipher, test.c_str(), test.length(), nonce);\
+					printf("\tplain text len(in byte): %d\n\tcipher len(in byte): %d\n", (int)test.length(), (int)cipher.length());\
+					std::string ret;\
+					aes.Decrypt(ret, cipher.c_str(), cipher.length(), nonce);\
+					printf("\tsrc text: %s\n\tdecrypted text: %s\n", test.c_str(), ret.c_str());\
+				}\
+				{\
+					std::cout << "encrypt file:" << std::endl;\
+					CStr enc = GetTestDir() + "aes_" + #mode + "_encrypt.bin";\
+					CStr dec = GetTestDir() + "aes_" + #mode + "_decrypt.txt";\
+					aes.Encrypt_File(enc, fn_test, nonce);\
+					std::cout << "\tcipher file: " << enc << std::endl;\
+					aes.Decrypt_File(dec, enc, nonce);\
+					std::cout << "\tdecrpyted file: " << dec << std::endl;\
+				}\
+			}
+			_AES(CFB);
+			_AES(OFB);
+			_AES(CTR);
+			_AES(ECB);
+			_AES(CBC);
+#undef _AES
+		}
+
+		{
+			std::cout << "---------test RSA---------" << std::endl;
+
+			CStr test = "abcdef123456789";
+			const int key_len = 512;
+			CStr nonce = "";
+			SaveTestFile("test_rsa.txt", test.c_str(), test.length());
+			CStr fn_test = GetTestDir() + "test_rsa.txt";
+
+			std::pair<std::string, std::string> key_a, key_b;
+			std::string seed = YXL::Crypt::RSA::GenSeed(1024);
+			YXL::Crypt::RSA::GenKeyPair(key_a.first, key_a.second, seed, key_len);
+			YXL::Crypt::RSA::GenKeyPair(key_b.first, key_b.second, seed, key_len);
+			printf("pk len(in byte): %d\nsk len(in byte): %d\n", (int)key_a.first.length(), (int)key_a.second.length());
+
+			YXL::Crypt::RSA encryptor(key_b.second, key_a.first);
+			YXL::Crypt::RSA decryptor(key_a.second, key_b.first);
+
+			{
+				std::cout << "encrypt string:" << std::endl;
+				std::string ret;
+				encryptor.Encrypt(ret, test.c_str(), test.length(), nonce);
+				printf("\tsrc text len(in byte): %d\n\tcipher len(in byte): %d\n", (int)test.length(), (int)ret.length());
+
+				std::string ret2;
+				decryptor.Decrypt(ret2, ret.c_str(), ret.length(), nonce);
+				printf("\tsrc text: %s\n\tdecrypted text: %s\n", test.c_str(), ret2.c_str());
+
+				std::string ret3;
+				encryptor.Decrypt(ret3, ret.c_str(), ret.length(), nonce);
+				printf("\tsrc text: %s\n\tdecrypted text: %s\n", test.c_str(), ret3.c_str());
+			}
+			{
+				std::cout << "encrypt file:" << std::endl;
+
+				CStr enc = GetTestDir() + "rsa_encrypt.bin"; 
+				CStr dec = GetTestDir() + "rsa_decrypt.txt"; 
+
+				encryptor.Encrypt_File(enc, fn_test, nonce);
+				std::cout << "\tcipher file: " << enc << std::endl;
+				decryptor.Decrypt_File(dec, enc, nonce);
+				std::cout << "\tdecrpyted file: " << dec << std::endl;
+			}
+		}
+#endif
+	}
+
 
 }

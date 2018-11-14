@@ -204,3 +204,10 @@ mesh simplify with:
 
 ## YXLWebpWarpper
 webp read/write
+
+## CryptoPP
+
+- must enable masm first:
+  - build dependencies->build customizations->masm(.targets, .props) check!!!
+- add files to project
+- if add files beform enable masm, the .asm file will not compiled.

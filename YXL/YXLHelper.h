@@ -14,13 +14,16 @@
 #define _YXL_CONSOLE_
 #define _YXL_TRANSFORM_
 #define _YXL_GRAPHIC_
-#define _YXL_IMG_PROC_
+//#define _YXL_IMG_PROC_
 //#define _YXL_IMG_CODEC_
 //#define _YXL_MINI_Z_
 //#define _YXL_HASH_
 //#define _YXL_CIPHER_
+//#define _YXL_NACL_
 //#define _YXL_CRYPTO_
-//#define _YXL_ENCRYPT_DATA_
+
+
+
 //#define _YXL_GLFW_
 
 #include <string>
@@ -68,6 +71,12 @@ namespace YXL
 #endif
 #ifndef _WITH_OPENCV_
 #undef _YXL_IMG_PROC_
+#endif
+#if defined(_YXL_CRYPTO_) || defined(_YXL_NACL_)
+#define _YXL_ENCRYPT_DATA_
+#if defined(_YXL_MINI_Z_)
+#define _YXL_ENCRYPT_DATA_CONTAINER_
+#endif
 #endif
 
 //
@@ -392,12 +401,17 @@ namespace YXL
 			fout.close();
 		}
 
-#if defined(_WITH_WINDOWS_) || defined(_WITH_QT_)
-		static std::string ToAbsolutePath(const std::string& path)
+		static std::string ToAbsolutePath(CStr& path, CStr& base_dir)
 		{
 			if (path.length() > 2 && path[1] == ':')
 				return path;
-			return GetWkDir() + "/" + path;
+			return CheckDirPath(base_dir) + path;
+		}
+
+#if defined(_WITH_WINDOWS_) || defined(_WITH_QT_)
+		static std::string ToAbsolutePath(const std::string& path)
+		{
+			ToAbsolutePath(path, GetWkDir());
 		}
 #endif
 
@@ -1652,17 +1666,17 @@ namespace YXL
 			File(CStr& fn, CStr& data) :fn(fn), _data(data) {}
 			File(CStr& fn, std::shared_ptr<const char> data, const size_t size):fn(fn), _data2(data), _data2_size(size){}
 
-			const char* GetDataPtr()
+			const char* GetDataPtr() const
 			{
 				return (_data2 == nullptr) ? _data.c_str() : _data2.get();
 			}
-			size_t GetDataSize()
+			size_t GetDataSize() const
 			{
 				return (_data2 == nullptr) ? _data.length() : _data2_size;
 			}
 
 
-#define READ_FUNC(Name, type) type Read##Name(){CheckData();type out;(*_ss)>>out; return out;}
+#define READ_FUNC(Name, type) type Read##Name() const{CheckData();type out;(*_ss)>>out; return out;}
 			READ_FUNC(Int, int);
 			READ_FUNC(Float, float);
 			READ_FUNC(Double, double);
@@ -1671,7 +1685,7 @@ namespace YXL
 #undef READ_FUNC
 			
 		private:
-			void CheckData()
+			void CheckData() const
 			{
 				size_t size = GetDataSize();
 				const char* ptr = GetDataPtr();
@@ -1691,8 +1705,8 @@ namespace YXL
 			size_t _data2_size=0;
 
 		private:
-			std::shared_ptr<std::stringstream> _ss = nullptr;
-			std::string _data_id;
+			mutable std::shared_ptr<std::stringstream> _ss = nullptr;
+			mutable std::string _data_id;
 		};
 
 		class Zip
@@ -1708,11 +1722,13 @@ namespace YXL
 
 			void AddFile(const std::string& fn, std::shared_ptr<const char> data, const size_t size);
 			void AddFile(const std::string& fn, const std::string& content);
+			void RemoveFile(const std::string& fn);
 
-			void GetFiles(std::multimap<std::string, std::shared_ptr<File>>& files);
-			void GetFiles(std::multimap<std::string, std::string>& files);
-			void GetFiles(std::map<std::string, std::shared_ptr<File>>& files);
-			void GetFiles(std::map<std::string, std::string>& files);
+			std::shared_ptr<const File> GetFile(const std::string& fn) const;
+			void GetFiles(std::multimap<std::string, std::shared_ptr<File>>& files) const;
+			void GetFiles(std::multimap<std::string, std::string>& files) const;
+			void GetFiles(std::map<std::string, std::shared_ptr<File>>& files) const;
+			void GetFiles(std::map<std::string, std::string>& files) const;
 
 		public:
 			static bool Unzip(std::multimap<std::string, std::shared_ptr<File>>& out_files, const char* zip, const size_t zip_size, const bool is_fn_lowercase = false);
@@ -1753,21 +1769,37 @@ namespace YXL
 }
 #endif
 
-#ifdef _YXL_ENCRYPT_DATA_
+#ifdef _YXL_CRYPTO_
 
-#include "tweetnacl/tweetnacl.h"
 namespace YXL
 {
 	namespace Crypt
 	{
-		class EncryptorBase
+#define _Encode(name) void name(std::string& out, CStr& str)
+#define _EncodeFile(name) void name##_File(std::string& out, CStr& str)
+		//hex
+		_Encode(HexEncode);
+		_Encode(HexDecode);
+		_EncodeFile(HexEncode_File);
+		_EncodeFile(HexDecode);
+		//base64
+		_Encode(Base64Encode);
+		_Encode(Base64Decode);
+		_EncodeFile(Base64Encode);
+		_EncodeFile(Base64Decode);
+#undef _Encode
+#undef _EncodeFile
+	}
+}
+#endif
+
+#ifdef _YXL_ENCRYPT_DATA_
+namespace YXL
+{
+	namespace Crypt
+	{
+		class _KeyCheck
 		{
-		public:
-			virtual ~EncryptorBase() {}
-
-			virtual void Encrypt(std::string& out, const char* in, const size_t in_size, std::string nonce) = 0;
-			virtual void Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce) = 0;
-
 		protected:
 			void CheckKey(const int len, std::string& key, CStr& txt)
 			{
@@ -1779,11 +1811,172 @@ namespace YXL
 			}
 		};
 
-		class DefSymEncryptor : public EncryptorBase
+		class EncryptorBase : public _KeyCheck
+		{
+		public:
+			virtual ~EncryptorBase() {}
+
+			virtual void Encrypt(std::string& out, const char* in, const size_t in_size, std::string nonce) = 0;
+			virtual bool Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce) = 0;
+
+			static std::string GenRandomBuffer(const int len)
+			{
+				std::string ret;
+				ret.resize(len);
+				Random((unsigned char*)&ret[0], len);
+				return ret;
+			}
+
+		
+		};
+
+		class SignerBase : public _KeyCheck
+		{
+		public:
+			SignerBase(CStr& sec_key_A, CStr& pub_key_B):_sec_key_A(sec_key_A), _pub_key_B(pub_key_B) {}
+			virtual ~SignerBase() {}
+
+			virtual void Sign(std::string& signature, const char* msg, const size_t msg_size) = 0;
+			virtual bool Verify(const std::string& signature, const char* msg, const size_t msg_size) = 0;
+
+		protected:
+			std::string _sec_key_A;
+			std::string _pub_key_B;
+		};
+
+		class HasherBase
+		{
+		public:
+			virtual ~HasherBase() {}
+			virtual void Hash(std::string& out, const char* in, const size_t in_size) = 0;
+		};
+
+		template<typename Sys, typename Asym, typename Hash> class EncryptedData
+		{
+		public:
+			static void Pack(std::string& out, const char* data, const size_t data_size, CStr& pub_key, CStr key, CStr nonce = "")
+			{
+				Sys sys(key);
+				std::string encrypted_data, encrypted_key, hash, encrypted_hash;
+				sys.Encrypt(encrypted_data, data, data_size, nonce);
+
+				Hash h;
+				h.Hash(hash, encrypted_data.c_str(), encrypted_data.length());
+
+				Asym asym("", pub_key);
+				asym.Encrypt(encrypted_key, key.c_str(), key.length(), nonce);
+				asym.Encrypt(encrypted_hash, hash.c_str(), hash.length(), nonce);
+
+				out.resize(encrypted_data.length() + encrypted_key.length() + encrypted_hash.length() + 8);
+				int a = encrypted_key.length();
+				auto ptr = &out[0];
+				int ofs = 0;
+				//key
+				memcpy(ptr + ofs, &a, sizeof(a));
+				ofs += sizeof(a);
+				memcpy(ptr + ofs, encrypted_key.c_str(), encrypted_key.length());
+				ofs += encrypted_key.length();
+				//hash
+				a = encrypted_hash.length();
+				memcpy(ptr + ofs, &a, sizeof(a));
+				ofs += sizeof(a);
+				memcpy(ptr + ofs, encrypted_hash.c_str(), encrypted_hash.length());
+				ofs += encrypted_hash.length();
+				//data
+				memcpy(ptr + ofs, encrypted_data.c_str(), encrypted_data.length());
+				ofs += encrypted_data.length();
+			}
+			static bool Unpack(std::string& out, const char* data, const size_t data_size, CStr& sec_key, CStr nonce = "")
+			{
+				Asym asym(sec_key, "");
+				std::string key, hash_recv, hash_comp;
+				auto ptr = data;
+				int ofs = 0;
+				int len = 0;
+
+				//key
+				len = *(int*)(ptr + ofs);
+				ofs += sizeof(len);
+				asym.Decrypt(key, ptr + ofs, len, nonce);
+				ofs += len;
+				//hash
+				len = *(int*)(ptr + ofs);
+				ofs += sizeof(len);
+				asym.Decrypt(hash_recv, ptr + ofs, len, nonce);
+				ofs += len;
+				//check data
+				Hash h;
+				h.Hash(hash_comp, ptr + ofs, data_size - ofs);
+				if (hash_comp != hash_recv)
+					return false;
+				//data
+				Sys sys(key);
+				sys.Decrypt(out, ptr + ofs, data_size - ofs, nonce);
+				return true;
+			}
+		};
+
+#ifdef _YXL_ENCRYPT_DATA_CONTAINER_
+		template<typename _EncryptedData> class DataContainer
+		{
+		public:
+			DataContainer(const std::string& sec_key) :_sk(sec_key)
+			{
+
+			}
+
+			void Load(const char* data, const size_t data_size, const std::string& nonce)
+			{
+				std::string ret;
+				auto flag = _EncryptedData::Unpack(ret, data, data_size, _sk, nonce);
+				if (false == flag)
+					return;
+				_zip = std::shared_ptr<ZIP::Zip>(new ZIP::Zip(ret, true));
+				std::map<std::string, std::shared_ptr<ZIP::File>> files;
+				_zip->GetFiles(files);
+				for (auto f : files)
+					_files_access_flag[f.first] = false;
+			}
+
+			bool FileExist(std::string fn) const
+			{
+				return _zip->GetFile(fn) != nullptr;
+			}
+			std::shared_ptr<const ZIP::File> GetFile(std::string fn) const
+			{
+				auto file = _zip->GetFile(fn);
+				if (nullptr == file)
+					std::cout << "[error] file not found, please check upper/lower case: " << fn << std::endl;
+				else
+					_files_access_flag[fn] = true;
+				return file;
+			}
+			void DiscardFile(std::string fn)
+			{
+				_zip->RemoveFile(fn);
+			}
+
+		private:
+			std::string _sk;
+			std::shared_ptr<ZIP::Zip> _zip = nullptr;
+			mutable std::map<std::string, bool> _files_access_flag;
+		};
+#endif
+	}
+}
+#endif
+
+#ifdef _YXL_NACL_
+#include "tweetnacl/tweetnacl.h"
+namespace YXL
+{
+	namespace Crypt
+	{
+		class SymEncryptorNaCL : public EncryptorBase
 		{
 			typedef Tweetnacl::u8 KeyType;
 		public:
-			DefSymEncryptor(CStr& key)
+			SymEncryptorNaCL(CStr& key)
 				:_key(key) 
 			{
 				CheckKey(crypto_secretbox_KEYBYTES, _key, "key");
@@ -1805,24 +1998,25 @@ namespace YXL
 				Tweetnacl::crypto_secretbox((KeyType*)&out[0], (const KeyType*)&_in[0], _in.length(), (const KeyType*)nonce.c_str(), (const KeyType*)_key.c_str());
 			}
 
-			void Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
+			bool Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
 			{
 				CheckKey(crypto_secretbox_NONCEBYTES, nonce, "nonce");
 				std::string tmp;
 				tmp.resize(in_size);
-				Tweetnacl::crypto_secretbox_open((KeyType*)&tmp[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_key.c_str());
+				int ret = Tweetnacl::crypto_secretbox_open((KeyType*)&tmp[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_key.c_str());
 				out = tmp.substr(crypto_secretbox_ZEROBYTES, tmp.length() - crypto_secretbox_ZEROBYTES);
+				return 0 == ret;
 			}
 
 		private:
 			std::string _key;
 		};
 
-		class DefAsymEncryptor : public EncryptorBase
+		class AsymEncryptorNaCL : public EncryptorBase
 		{
 			typedef Tweetnacl::u8 KeyType;
 		public:
-			DefAsymEncryptor(CStr& sec_key_A, CStr& pub_key_B)
+			AsymEncryptorNaCL(CStr& sec_key_A, CStr& pub_key_B)
 				:_sec_key_A(sec_key_A), _pub_key_B(pub_key_B)
 			{
 				CheckKey(crypto_box_PUBLICKEYBYTES, _pub_key_B, "public key");
@@ -1853,13 +2047,14 @@ namespace YXL
 				out.resize(_in.size());
 				Tweetnacl::crypto_box_afternm((KeyType*)&out[0], (const KeyType*)&_in[0], _in.length(), (const KeyType*)nonce.c_str(), (const KeyType*)_k_encrypt.c_str());
 			}
-			void Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
+			bool Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
 			{
 				CheckKey(crypto_secretbox_NONCEBYTES, nonce, "nonce");
 				std::string tmp;
 				tmp.resize(in_size);
-				Tweetnacl::crypto_box_open_afternm((KeyType*)&tmp[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_k_decrypt.c_str());
+				int ret = Tweetnacl::crypto_box_open_afternm((KeyType*)&tmp[0], (const KeyType*)in, in_size, (const KeyType*)nonce.c_str(), (const KeyType*)_k_decrypt.c_str());
 				out = tmp.substr(crypto_secretbox_ZEROBYTES, tmp.length() - crypto_secretbox_ZEROBYTES);
+				return 0 == ret;
 			}
 			
 		private:
@@ -1869,31 +2064,12 @@ namespace YXL
 			std::string _k_decrypt;
 		};
 
-		class SignerBase
-		{
-		public:
-			virtual ~SignerBase() {}
-
-			virtual void Sign(std::string& out, const char* in, const size_t in_size) = 0;
-			virtual bool Verify(std::string&out, const char* in, const size_t in_size) = 0;
-
-		protected:
-			void CheckKey(const int len, std::string& key, CStr& txt)
-			{
-				if (key.length() != len)
-				{
-					key.resize(len, ' ');
-					std::cout << txt << " resize to \"" << key << "\"" << std::endl;
-				}
-			}
-		};
-
-		class DefSigner : public SignerBase
+		class SignerNaCL : public SignerBase
 		{
 			typedef Tweetnacl::u8 KeyType;
 		public:
-			DefSigner(CStr& sec_key_A, CStr& pub_key_B)
-				:_sec_key_A(sec_key_A), _pub_key_B(pub_key_B)
+			SignerNaCL(CStr& sec_key_A, CStr& pub_key_B)
+				:SignerBase(sec_key_A, pub_key_B)
 			{
 				CheckKey(crypto_sign_PUBLICKEYBYTES, _pub_key_B, "public key");
 				CheckKey(crypto_sign_SECRETKEYBYTES, _sec_key_A, "secret key");
@@ -1906,63 +2082,536 @@ namespace YXL
 				Tweetnacl::crypto_sign_keypair((KeyType*)&pk[0], (KeyType*)&sk[0]);
 			}
 
-			void Sign(std::string& out, const char* in, const size_t in_size)
+			void Sign(std::string& signature, const char* msg, const size_t msg_size)
 			{
-				out.resize(in_size + crypto_sign_BYTES);
+				signature.resize(msg_size + crypto_sign_BYTES);
 				size_t smlen(0);
-				Tweetnacl::crypto_sign((KeyType*)&out[0], &smlen, (const KeyType*)in, in_size, (KeyType*)_sec_key_A.c_str());
-				out.resize(smlen);
+				Tweetnacl::crypto_sign((KeyType*)&signature[0], &smlen, (const KeyType*)msg, msg_size, (KeyType*)_sec_key_A.c_str());
+				signature.resize(smlen);
 			}
 
-			bool Verify(std::string& out, const char* in, const size_t in_size)
+			bool Verify(const std::string& signature, const char* msg, const size_t msg_size)
 			{
-				out.resize(in_size);
+				std::string tmp;
+				tmp.resize(signature.size());
 				size_t mlen;
-				int ret = Tweetnacl::crypto_sign_open((KeyType*)&out[0], &mlen, (const KeyType*)in, in_size, (KeyType*)_pub_key_B.c_str());
-				out.resize(mlen);
+				int ret = Tweetnacl::crypto_sign_open((KeyType*)&tmp[0], &mlen, (const KeyType*)signature.c_str(), signature.size(), (KeyType*)_pub_key_B.c_str());
+				if(0==ret)
+					tmp.resize(mlen);
 				return 0 == ret;
+			}
+		};
+
+		class HasherNaCL : public HasherBase
+		{
+			typedef Tweetnacl::u8 KeyType;
+		public:
+			void Hash(std::string& out, const char* in, const size_t in_size)
+			{
+				out.resize(crypto_hash_BYTES);
+				Tweetnacl::crypto_hash((KeyType*)&out[0], (const KeyType*)in, in_size);
+			}
+		};
+
+		typedef EncryptedData<SymEncryptorNaCL, AsymEncryptorNaCL, HasherNaCL> EncryptedDataNaCL;
+#ifdef _YXL_ENCRYPT_DATA_CONTAINER_
+		typedef DataContainer<EncryptedDataNaCL> DataContainerNaCL;
+#endif
+	}
+}
+#endif
+
+#ifdef _YXL_CRYPTO_
+#include "cryptopp/aes.h"
+#include "cryptopp/rsa.h"
+#include "cryptopp/randpool.h"
+#include "cryptopp/modes.h"
+#include "cryptopp/hex.h"
+#include "cryptopp/files.h"
+#include "cryptopp/channels.h"
+#include "cryptopp/sha.h"
+#include "cryptopp/sha3.h"
+#include "cryptopp/tiger.h"
+#include "cryptopp/ripemd.h"
+#include "cryptopp/whrlpool.h"
+#include "cryptopp/md5.h"
+#include "cryptopp/hmac.h"
+#include "cryptopp/base64.h"
+namespace YXL
+{
+	namespace Crypt
+	{
+		//thread not safe
+		class _CryptoPPBase
+		{
+		protected:
+			CryptoPP::RandomNumberGenerator & GlobalRNG()
+			{
+				if (false == _is_init)
+				{
+					std::string seed = GetCurTime();
+					seed.resize(16);
+					CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption& aesg = dynamic_cast<CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption&>(s_globalRNG);
+					aesg.SetKeyWithIV((CryptoPP::byte *)seed.data(), 16, (CryptoPP::byte *)seed.data());
+					_is_init = true;
+				}
+
+				return dynamic_cast<CryptoPP::RandomNumberGenerator&>(s_globalRNG);
+			}
+
+		protected:
+			static CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption s_globalRNG;
+			static bool _is_init;
+		};
+
+		class _RSA
+		{
+		public:
+			static void GenKeyPair(std::string& pk, std::string& sk, CStr& seed, const unsigned int key_len)
+			{
+				using namespace CryptoPP;
+				// DEREncode() changed to Save() at Issue 569.
+				RandomPool randPool;
+				randPool.IncorporateEntropy((const CryptoPP::byte *)seed.c_str(), seed.length());
+
+				RSAES_OAEP_SHA_Decryptor priv(randPool, key_len);
+				HexEncoder privFile(new StringSink(sk));
+				priv.AccessMaterial().Save(privFile);
+				privFile.MessageEnd();
+
+				RSAES_OAEP_SHA_Encryptor pub(priv);
+				HexEncoder pubFile(new StringSink(pk));
+				pub.AccessMaterial().Save(pubFile);
+				pubFile.MessageEnd();
+			}
+
+			static std::string GenSeed(const int len)
+			{
+				std::string ret;
+				ret.resize(len);
+				Random((unsigned char*)&ret[0], len);
+				return ret;
+			}
+		};
+
+
+		/*
+		sign
+		*/
+		class SignerCryptoPPBase : public SignerBase
+		{
+		public:
+			SignerCryptoPPBase(CStr& sec_key_A, CStr& pub_key_B):SignerBase(sec_key_A, pub_key_B) {}
+
+			virtual void SignFile(std::string& signature, const std::string& fn) = 0;
+			virtual bool VerifyFile(const std::string& signature, const std::string& fn) = 0;
+		};
+
+		class SignerRSA : public SignerCryptoPPBase, public _RSA, public _CryptoPPBase
+		{
+		public:
+			SignerRSA(CStr& sec_key_A, CStr& pub_key_B)
+				:SignerCryptoPPBase(sec_key_A, pub_key_B)
+			{
+				
+			}
+
+			void Sign(std::string& signature, const char* msg, const size_t msg_size)
+			{
+				using namespace CryptoPP;
+				StringSource privFile(_sec_key_A, true, new HexDecoder);
+				RSASS<PKCS1v15, SHA1>::Signer priv(privFile);
+				StringSource f(std::string(msg, msg_size), true, new SignerFilter(GlobalRNG(), priv, new HexEncoder(new StringSink(signature))));
+			}
+
+			bool Verify(const std::string& signature, const char* msg, const size_t msg_size)
+			{
+				using namespace CryptoPP;
+				StringSource pubFile(_pub_key_B, true, new HexDecoder);
+				RSASS<PKCS1v15, CryptoPP::SHA1>::Verifier pub(pubFile);
+
+				StringSource signatureFile(signature, true, new HexDecoder);
+				if (signatureFile.MaxRetrievable() != pub.SignatureLength())
+					return false;
+				SecByteBlock tmp(pub.SignatureLength());
+				signatureFile.Get(tmp, tmp.size());
+
+				SignatureVerificationFilter *verifierFilter = new SignatureVerificationFilter(pub);
+				verifierFilter->Put(tmp, pub.SignatureLength());
+
+				StringSource f(std::string(msg, msg_size), true, verifierFilter);
+
+				return verifierFilter->GetLastResult();
+
+			}
+
+			void SignFile(std::string& signature, const std::string& fn)
+			{
+				using namespace CryptoPP;
+				StringSource privFile(_sec_key_A, true, new HexDecoder);
+				RSASS<PKCS1v15, CryptoPP::SHA1>::Signer priv(privFile);
+				FileSource f(fn.c_str(), true, new SignerFilter(GlobalRNG(), priv, new HexEncoder(new StringSink(signature))));
+			}
+
+			bool VerifyFile(const std::string& signature, const std::string& fn)
+			{
+				using namespace CryptoPP;
+				StringSource pubFile(_pub_key_B, true, new HexDecoder);
+				RSASS<PKCS1v15, CryptoPP::SHA1>::Verifier pub(pubFile);
+
+				StringSource signatureFile(signature, true, new HexDecoder);
+				if (signatureFile.MaxRetrievable() != pub.SignatureLength())
+					return false;
+				SecByteBlock tmp(pub.SignatureLength());
+				signatureFile.Get(tmp, tmp.size());
+
+				SignatureVerificationFilter *verifierFilter = new SignatureVerificationFilter(pub);
+				verifierFilter->Put(tmp, pub.SignatureLength());
+				FileSource f(fn.c_str(), true, verifierFilter);
+
+				return verifierFilter->GetLastResult();
+			}
+
+		};
+
+		/*
+		hash
+		*/
+		class HasherCryptoPPBase :public HasherBase
+		{
+		public:
+			virtual void HashFile(std::string& out, const std::string& fn) = 0;
+		};
+
+		template<typename Type> class _Hasher : public HasherCryptoPPBase
+		{
+		public:
+			void Hash(std::string& out, const char* in, const size_t in_size)
+			{
+				out = Digest<CryptoPP::StringSource>(std::string(in, in_size));
+			}
+			void HashFile(std::string& out, const std::string& fn)
+			{
+				out = Digest<CryptoPP::FileSource>(fn.c_str());
 			}
 
 		private:
+			template<typename Src, typename In> std::string Digest(const In& in) const
+			{
+				using namespace CryptoPP;
+				Type sha;
+				auto filter = new HashFilter(sha);
+
+				member_ptr<ChannelSwitch> channelSwitch(new ChannelSwitch);
+				channelSwitch->AddDefaultRoute(*filter);
+				Src(in, true, channelSwitch.release());
+
+				std::string out;
+				HexEncoder encoder(new StringSink(out), false);
+				filter->TransferAllTo(encoder);
+
+				return out;
+			}
+		};
+
+#define _HASHER(name) typedef _Hasher<CryptoPP::name> Hasher##name;
+		_HASHER(MD5);
+		_HASHER(SHA1);
+		_HASHER(SHA224);
+		_HASHER(SHA256);
+		_HASHER(SHA384);
+		_HASHER(SHA512);
+		_HASHER(SHA3_256);
+		_HASHER(SHA3_384);
+		_HASHER(SHA3_512);
+		/// \brief Tiger message digest
+		/// \sa <a href="http://www.cryptolounge.org/wiki/Tiger">Tiger</a>
+		_HASHER(Tiger);
+		/// \brief RIPEMD-128 message digest
+		/// \details Digest size is 128-bits.
+		/// \warning RIPEMD-128 is considered insecure, and should not be used unless you absolutely need it for compatibility.
+		/// \sa <a href="http://www.weidai.com/scan-mirror/md.html#RIPEMD-128">RIPEMD-128</a>
+		_HASHER(RIPEMD128);
+		/// \brief RIPEMD-160 message digest
+		/// \details Digest size is 160-bits.
+		/// \sa <a href="http://www.weidai.com/scan-mirror/md.html#RIPEMD-160">RIPEMD-160</a>
+		_HASHER(RIPEMD160);
+		/// \brief Whirlpool message digest
+		/// \details Crypto++ provides version 3.0 of the Whirlpool algorithm.
+		///   This version of the algorithm was submitted for ISO standardization.
+		/// \sa <a href="http://www.cryptopp.com/wiki/Whirlpool">Whirlpool</a>
+		_HASHER(Whirlpool);
+#undef _HASHER
+		
+		/*
+		encrypt
+		*/
+		class SymEncryptorCryptoPPBase : public EncryptorBase
+		{
+		public:
+			SymEncryptorCryptoPPBase(CStr& key)
+				:_key(key)
+			{
+				//TODO: check key
+				if (_key.length() > 24)//aes 256
+					_key.resize(32);
+				else if (_key.length() > 16)//aes 192
+					_key.resize(24);
+				else//aes 128
+					_key.resize(16);
+			}
+
+			virtual void Encrypt_File(const std::string& fn_out, const std::string& fn_in, std::string nonce) = 0;
+			virtual bool Decrypt_File(const std::string& fn_out, const std::string& fn_in, std::string nonce) = 0;
+
+			static std::string GenKey(const int len)
+			{
+				std::string ret;
+				ret.resize(len);
+				Random((unsigned char*)&ret[0], len);
+				return ret;
+			}
+
+		protected:
+			/*static CryptoPP::SecByteBlock HexDecodeString(CStr& hex)
+			{
+				using namespace CryptoPP;
+				StringSource ss(hex, true, new HexDecoder);
+				SecByteBlock result((size_t)ss.MaxRetrievable());
+				ss.Get(result, result.size());
+				return result;
+			}
+			static std::string HecEncodeString(CStr& str)
+			{
+				using namespace CryptoPP;
+				HexEncoder encoder;
+				encoder.Put((const CryptoPP::byte*)str.c_str(), str.length());
+				std::string ret;
+				ret.resize(static_cast<size_t>(encoder.MaxRetrievable()));
+				encoder.Get(reinterpret_cast<CryptoPP::byte*>(&ret[0]), ret.size());
+				return ret;
+			}*/
+
+			template<typename Method, typename Src, typename Dest, typename Out, typename In>
+			bool Stream_Encrypt_Decrypt(Out& out, const In& in, CStr& nonce)
+			{
+				using namespace CryptoPP;
+				try
+				{
+					//SecByteBlock key = HexDecodeString(_key);
+					//SecByteBlock iv = HexDecodeString(nonce);
+					Method aes((const CryptoPP::byte*)_key.c_str(), _key.size(), (const CryptoPP::byte*)nonce.c_str());
+					Src(in, true, new StreamTransformationFilter(aes, new Dest(out)));
+					return true;
+				}
+				catch (const Exception& e)
+				{
+					std::cout << e.GetWhat() << std::endl;
+					return false;
+					//throw e;
+				}
+			}
+			template<typename Method, typename Src, typename Dest, typename Out, typename In>
+			bool Stream_Encrypt_Decrypt(Out& out, const In& in)
+			{
+				using namespace CryptoPP;
+				try
+				{
+					//SecByteBlock key = HexDecodeString(_key);
+					Method aes((const CryptoPP::byte*)_key.c_str(), _key.size());
+					Src(in, true, new StreamTransformationFilter(aes, new Dest(out)));
+					return true;
+				}
+				catch (const Exception& e)
+				{
+					std::cout << e.GetWhat() << std::endl;
+					return false;
+					//throw e;
+				}
+			}
+
+		protected:
+			std::string _key;
+		};
+
+		template<typename Mode, bool need_nonce> class SymEncryptorAES : public SymEncryptorCryptoPPBase
+		{
+		public:
+			SymEncryptorAES(CStr& key) :SymEncryptorCryptoPPBase(key) {}
+
+			void Encrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
+			{
+				if(need_nonce)
+					Stream_Encrypt_Decrypt<Mode::Encryption, CryptoPP::StringSource, CryptoPP::StringSink>(out, std::string(in, in_size), nonce);
+				else
+					Stream_Encrypt_Decrypt<Mode::Encryption, CryptoPP::StringSource, CryptoPP::StringSink>(out, std::string(in, in_size));
+			}
+
+			bool Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
+			{
+				if (need_nonce)
+					return Stream_Encrypt_Decrypt<Mode::Decryption, CryptoPP::StringSource, CryptoPP::StringSink>(out, std::string(in, in_size), nonce);
+				else
+					return Stream_Encrypt_Decrypt<Mode::Decryption, CryptoPP::StringSource, CryptoPP::StringSink>(out, std::string(in, in_size));
+			}
+
+			void Encrypt_File(const std::string& fn_out, const std::string& fn_in, std::string nonce)
+			{
+				auto in = fn_in.c_str();
+				auto out = fn_out.c_str();
+				if(need_nonce)
+					Stream_Encrypt_Decrypt<Mode::Encryption, CryptoPP::FileSource, CryptoPP::FileSink>(out, in, nonce);
+				else
+					Stream_Encrypt_Decrypt<Mode::Encryption, CryptoPP::FileSource, CryptoPP::FileSink>(out, in);
+			}
+
+			bool Decrypt_File(const std::string& fn_out, const std::string& fn_in, std::string nonce)
+			{
+				auto in = fn_in.c_str();
+				auto out = fn_out.c_str();
+				if (need_nonce)
+					return Stream_Encrypt_Decrypt<Mode::Decryption, CryptoPP::FileSource, CryptoPP::FileSink>(out, in, nonce);
+				else
+					return Stream_Encrypt_Decrypt<Mode::Decryption, CryptoPP::FileSource, CryptoPP::FileSink>(out, in);
+			}
+		};
+
+#define _AES(mode, need_nonce) typedef SymEncryptorAES<CryptoPP::mode##_Mode<CryptoPP::AES>, need_nonce> AES_##mode
+		_AES(CFB, true);
+		_AES(OFB, true);
+		_AES(CTR, true);
+		_AES(ECB, false);
+		_AES(CBC, true);
+#undef _AES
+
+		class AsymEncryptorCryptoPPBase: public EncryptorBase
+		{
+		public:
+			AsymEncryptorCryptoPPBase(CStr& sec_key_A, CStr& pub_key_B)
+				:_sec_key_A(sec_key_A), _pub_key_B(pub_key_B)
+			{
+				//TODO: check key
+			}
+
+			virtual void Encrypt_File(const std::string& fn_out, const std::string& fn_in, std::string nonce) = 0;
+			virtual bool Decrypt_File(const std::string& fn_out, const std::string& fn_in, std::string nonce) = 0;
+
+		protected:
 			std::string _sec_key_A;
 			std::string _pub_key_B;
 		};
 
-		template<typename Sys, typename Asym> class EncryptedData
+		class RSA : public AsymEncryptorCryptoPPBase, public _RSA, public _CryptoPPBase
 		{
 		public:
-			static void Pack(std::string& out, CStr& data, CStr& pub_key, CStr key, CStr nonce = "")
+			RSA(CStr& sec_key_A, CStr& pub_key_B)
+				:AsymEncryptorCryptoPPBase(sec_key_A, pub_key_B)
 			{
-				Sys sys(key);
-				std::string tmp, tmp2;
-				sys.Encrypt(tmp, data.c_str(), data.length(), nonce);
-				Asym asym("", pub_key);
-				asym.Encrypt(tmp2, key.c_str(), key.length(), nonce);
-
-				out.resize(tmp.length() + tmp2.length() + 4);
-				int a = tmp2.length();
-				auto ptr = &out[0];
-				memcpy(ptr, &a, sizeof(a));
-				memcpy(ptr + sizeof(a), tmp2.c_str(), tmp2.length());
-				memcpy(ptr + sizeof(a) + tmp2.length(), tmp.c_str(), tmp.length());
 			}
-			static void Unpack(std::string& out, CStr& data, CStr& sec_key, CStr nonce = "")
+
+			void Encrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
 			{
-				Asym asym(sec_key, "");
-				std::string key;
-				auto ptr = data.c_str();
-				int len = ((int*)ptr)[0];
-				asym.Decrypt(key, ptr + sizeof(int), len, nonce);
-				Sys sys(key);
-				sys.Decrypt(out, ptr + sizeof(int) + len, data.length() - sizeof(int) - len, nonce);
+				using namespace CryptoPP;
+				StringSource pub_key(_pub_key_B, true, new HexDecoder);
+				RSAES_OAEP_SHA_Encryptor pub(pub_key);
+
+				RandomPool randPool;
+				randPool.IncorporateEntropy((const CryptoPP::byte *)nonce.c_str(), nonce.length());
+
+				StringSource(std::string(in, in_size), true, new PK_EncryptorFilter(randPool, pub, new HexEncoder(new StringSink(out))));
+			}
+
+			bool Decrypt(std::string& out, const char* in, const size_t in_size, std::string nonce)
+			{
+				using namespace CryptoPP;
+				try
+				{
+					StringSource privFile(_sec_key_A, true, new HexDecoder);
+					RSAES_OAEP_SHA_Decryptor priv(privFile);
+					StringSource(in, true, new HexDecoder(new PK_DecryptorFilter(GlobalRNG(), priv, new StringSink(out))));
+					return true;
+				}
+				catch (const Exception& e)
+				{
+					std::cout << e.GetWhat() << std::endl;
+					return false;
+					//throw e;
+				}
+			}
+
+			void Encrypt_File(const std::string& fn_out, const std::string& fn_in, std::string nonce)
+			{
+				using namespace CryptoPP;
+				StringSource pub_key(_pub_key_B, true, new HexDecoder);
+				RSAES_OAEP_SHA_Encryptor pub(pub_key);
+
+				RandomPool randPool;
+				randPool.IncorporateEntropy((const CryptoPP::byte *)nonce.c_str(), nonce.length());
+
+				FileSource(fn_in.c_str(), true, new PK_EncryptorFilter(randPool, pub, new HexEncoder(new FileSink(fn_out.c_str()))));
+			}
+
+			bool Decrypt_File(const std::string& fn_out, const std::string& fn_in, std::string nonce)
+			{
+				using namespace CryptoPP;
+				try
+				{
+					StringSource privFile(_sec_key_A, true, new HexDecoder);
+					RSAES_OAEP_SHA_Decryptor priv(privFile);
+					FileSource(fn_in.c_str(), true, new HexDecoder(new PK_DecryptorFilter(GlobalRNG(), priv, new FileSink(fn_out.c_str()))));
+					return true;
+				}
+				catch (const Exception& e)
+				{
+					std::cout << e.GetWhat() << std::endl;
+					return false;
+					//throw e;
+				}
+			}
+
+		};
+
+		/*
+		codec
+		*/
+		template<typename Encoder, typename Decoder> class CodecBase
+		{
+		public:
+			void Encode(std::string& out, CStr& in)
+			{
+				EncodeDecode<Encoder, CryptoPP::StringSource, CryptoPP::StringSink>(out, in);
+			}
+			void Decode(std::string& out, CStr& in)
+			{
+				EncodeDecode<Decoder, CryptoPP::StringSource, CryptoPP::StringSink>(out, in);
+			}
+			void EncodeFile(CStr& fn_out, CStr& fn_in)
+			{
+				auto in = fn_in.c_str(); 
+				auto out = fn_out.c_str();
+				EncodeDecode<Encoder, CryptoPP::FileSource, CryptoPP::FileSink>(out, in);
+			}
+			void DecodeFile(CStr& fn_out, CStr& fn_in)
+			{
+				auto in = fn_in.c_str();
+				auto out = fn_out.c_str();
+				EncodeDecode<Decoder, CryptoPP::FileSource, CryptoPP::FileSink>(out, in);
+			}
+
+		private:
+			template<typename Method, typename Src, typename Dest, typename Out, typename In> void EncodeDecode(Out& out, const In& in)
+			{
+				Src(in, true, new Method(new Dest(out)));
 			}
 		};
 
-		typedef EncryptedData<DefSymEncryptor, DefAsymEncryptor> DefEncryptedData;
+		typedef CodecBase<CryptoPP::HexEncoder, CryptoPP::HexDecoder> Hex;
+		typedef CodecBase<CryptoPP::Base64Encoder, CryptoPP::Base64Decoder> Base64;
 	}
 }
-
 #endif
+
+
 
 #ifdef _YXL_HASH_
 namespace YXL
@@ -2001,136 +2650,6 @@ namespace YXL
 }
 
 #endif
-
-
-
-
-
-#ifdef _YXL_CRYPTO_
-
-namespace YXL
-{
-	namespace Crypt
-	{
-		//rsa
-		void RSAGenerateKey(std::string& private_key, std::string& public_key, CStr& seed, const unsigned int key_len);
-		void RSAEncrypt(std::string& out, CStr& message, CStr& public_key, CStr& seed);
-		void RSADecrypt(std::string& out, CStr& ciphertext, CStr& private_key);
-
-		void RSAGenerateKey_File(CStr& fn_private_key, CStr& fn_public_key, CStr& seed, const unsigned int key_len);
-		void RSAEncrypt_File(CStr& fn_out, CStr& fn_message, CStr& public_key, CStr& seed);
-		void RSADecrypt_File(CStr& fn_out, CStr& fn_ciphertext, CStr& private_key);
-
-		void RSASign(std::string& signature, CStr& message, CStr& private_key);
-		bool RSAVerify(CStr& signature, CStr& message, CStr& public_key);
-
-		void RSASign_File(std::string& signature, CStr& fn_message, CStr& private_key);
-		bool RSAVerify_File(CStr& signature, CStr& fn_message, CStr& public_key);
-
-		//digest
-#define _Digest(name) std::string name(CStr& str)
-#define _DigestFile(name) std::string name##_File(CStr& fn_in)
-		_Digest(MD5);
-		_Digest(SHA1);
-		_Digest(SHA224);
-		_Digest(SHA256);
-		_Digest(SHA384);
-		_Digest(SHA512);
-		_Digest(SHA3_256);
-		_Digest(SHA3_384);
-		_Digest(SHA3_512);
-		/// \brief Tiger message digest
-		/// \sa <a href="http://www.cryptolounge.org/wiki/Tiger">Tiger</a>
-		_Digest(Tiger);
-		std::string Tiger(CStr& str);
-		/// \brief RIPEMD-128 message digest
-		/// \details Digest size is 128-bits.
-		/// \warning RIPEMD-128 is considered insecure, and should not be used unless you absolutely need it for compatibility.
-		/// \sa <a href="http://www.weidai.com/scan-mirror/md.html#RIPEMD-128">RIPEMD-128</a>
-		_Digest(RIPEMD128);
-		/// \brief RIPEMD-160 message digest
-		/// \details Digest size is 160-bits.
-		/// \sa <a href="http://www.weidai.com/scan-mirror/md.html#RIPEMD-160">RIPEMD-160</a>
-		_Digest(RIPEMD160);
-		/// \brief Whirlpool message digest
-		/// \details Crypto++ provides version 3.0 of the Whirlpool algorithm.
-		///   This version of the algorithm was submitted for ISO standardization.
-		/// \sa <a href="http://www.cryptopp.com/wiki/Whirlpool">Whirlpool</a>
-		_Digest(Whirlpool);
-		/// \brief HMAC
-		/// \tparam T HashTransformation derived class
-		/// \details HMAC derives from MessageAuthenticationCodeImpl. It calculates the HMAC using
-		///   <tt>HMAC(K, text) = H(K XOR opad, H(K XOR ipad, text))</tt>.
-		/// \sa <a href="http://www.weidai.com/scan-mirror/mac.html#HMAC">HMAC</a>
-		//hex_key: empty for computing HMAC/SHA1 value for self test 
-		std::string HMAC(CStr& hex_key, CStr& str);
-		_DigestFile(MD5);
-		_DigestFile(SHA1);
-		_DigestFile(SHA224);
-		_DigestFile(SHA256);
-		_DigestFile(SHA384);
-		_DigestFile(SHA512);
-		_DigestFile(SHA3_256);
-		_DigestFile(SHA3_384);
-		_DigestFile(SHA3_512);
-		_DigestFile(Tiger);
-		_DigestFile(RIPEMD128);
-		_DigestFile(RIPEMD160);
-		_DigestFile(Whirlpool);
-		std::string HMAC_File(CStr& hex_key, CStr& fn_in);
-#undef _Digest
-#undef _DigestFile
-
-		//AES
-#define _EncryptIV(name) void name(std::string& out, CStr& str, CStr& hex_key, CStr& hex_iv);
-#define _Encrypt(name) void name(std::string& out, CStr& str, CStr& hex_key);
-#define _EncryptFileIV(name) void name##_File(CStr& fn_out, CStr& fn_in, CStr& hex_key, CStr& hex_iv);
-#define _EncryptFile(name) void name##_File(CStr& fn_out, CStr& fn_in, CStr& hex_key);
-		_EncryptIV(AESEncryptCFB);
-		_EncryptIV(AESDecryptCFB);
-		_EncryptIV(AESEncryptOFB);
-		_EncryptIV(AESDecryptOFB);
-		_EncryptIV(AESEncryptCTR);
-		_EncryptIV(AESDecryptCTR);
-		_Encrypt(AESEncryptECB);
-		_Encrypt(AESDecryptECB);
-		_EncryptIV(AESEncryptCBC);
-		_EncryptIV(AESDecryptCBC);
-
-		_EncryptFileIV(AESEncryptCFB);
-		_EncryptFileIV(AESDecryptCFB);
-		_EncryptFileIV(AESEncryptOFB);
-		_EncryptFileIV(AESDecryptOFB);
-		_EncryptFileIV(AESEncryptCTR);
-		_EncryptFileIV(AESDecryptCTR);
-		_EncryptFile(AESEncryptECB);
-		_EncryptFile(AESDecryptECB);
-		_EncryptFileIV(AESEncryptCBC);
-		_EncryptFileIV(AESDecryptCBC);
-#undef _EncryptIV
-#undef _Encrypt
-#undef _EncryptFileIV
-#undef _EncryptFile
-
-#define _Encode(name) void name(std::string& out, CStr& str)
-#define _EncodeFile(name) void name##_File(std::string& out, CStr& str)
-		//hex
-		_Encode(HexEncode);
-		_Encode(HexDecode);
-		_EncodeFile(HexEncode_File);
-		_EncodeFile(HexDecode);
-		//base64
-		_Encode(Base64Encode);
-		_Encode(Base64Decode);
-		_EncodeFile(Base64Encode);
-		_EncodeFile(Base64Decode);
-#undef _Encode
-#undef _EncodeFile
-	}
-}
-#endif
-
-
 
 #ifdef _YXL_GLFW_
 namespace YXL
