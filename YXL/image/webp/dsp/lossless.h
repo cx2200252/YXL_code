@@ -18,7 +18,7 @@
 #include "../webp/types.h"
 #include "../webp/decode.h"
 
-#include "../enc/histogram.h"
+#include "../enc/enc_histogram.h"
 #include "../utils/utils.h"
 
 #ifdef __cplusplus

@@ -38,6 +38,7 @@
 #include <algorithm>
 #include <stack>
 #include <thread>
+#include <random>
 
 #pragma warning(disable:4819)
 #ifdef YXL_HELPER_DYNAMIC
@@ -1609,7 +1610,7 @@ namespace YXL
 		marco(BGR);\
 		marco(Grey);
 
-#define DECODE_FUNC(name) void Decode##name(std::shared_ptr<unsigned char>& img, int& w, int& h, CStr& in_data);
+#define DECODE_FUNC(name) void DecodePNG_##name(std::shared_ptr<unsigned char>& img, int& w, int& h, CStr& in_data);
 		DECLARE_ALL(DECODE_FUNC)
 #undef DECODE_FUNC
 		//decode
@@ -1623,7 +1624,7 @@ namespace YXL
 		DECLARE_ALL(DECODE_FUNC_WEBP);
 #undef DECODE_FUNC_WEBP
 
-#define ENCODE_FUNC_WEBP(name) void EncodeWebp_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h, const float quality);
+#define ENCODE_FUNC_WEBP(name) void EncodeWebP_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h, const float quality);
 		// @quality: 
 		//	[0-100): lossy
 		//	>=100: lossless

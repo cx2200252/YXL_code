@@ -16,5 +16,6 @@ namespace YXL_TEST
 	void TestZip();
 	void TestNaCL();
 	void TestCrypto();
+	void TestImage();
 
 }

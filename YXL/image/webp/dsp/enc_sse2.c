@@ -19,8 +19,8 @@
 #include <emmintrin.h>
 
 #include "./common_sse2.h"
-#include "../enc/cost.h"
-#include "../enc/vp8enci.h"
+#include "../enc/enc_cost.h"
+#include "../enc/enc_vp8enci.h"
 
 //------------------------------------------------------------------------------
 // Transforms (Paragraph 14.4)

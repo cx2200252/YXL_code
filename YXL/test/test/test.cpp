@@ -416,5 +416,58 @@ namespace YXL_TEST
 #endif
 	}
 
+	void TestImage()
+	{
+		std::cout << "*********************************************************************************" << std::endl;
+#ifndef _YXL_IMG_CODEC_
+		std::cout << "image codec not enable..." << std::endl;
+#else
+		std::string test_img, test_img2;
+		YXL::File::LoadFileContentBinary(GetTestDir() + "test.png", test_img);
+		YXL::File::LoadFileContentBinary(GetTestDir() + "test.webp", test_img2);
 
+		int test_pix_x = 230;
+		int test_pix_y = 70;
+		std::cout << "pixel at (" << test_pix_x << "," << test_pix_y << ") in RGB order: (200,70,70)" << std::endl;;
+
+		std::cout << "---------test png codec---------" << std::endl;
+#define _TEST(in, out, ch)\
+		{\
+			std::shared_ptr<unsigned char> data = nullptr;\
+			int w(0), h(0);\
+			YXL::Image::DecodePNG_##in(data, w, h, test_img);\
+			std::shared_ptr<unsigned char> data2 = nullptr;\
+			int size(0);\
+			YXL::Image::EncodePNG_##out(data2, size, data.get(), w, h);\
+			YXL::File::WriteFileContentBinary(GetTestDir() + "test_i"+#in+"_o"+#out+".png", std::string((char*)data2.get(), size));\
+			std::cout<<"in("<<#in<<"):\t";\
+			std::cout << "(" << (int)data.get()[test_pix_y*w*ch + test_pix_x*ch] << "," << (int)data.get()[test_pix_y*w*ch + test_pix_x*ch + 1] << "," << (int)data.get()[test_pix_y*w*ch + test_pix_x*ch + 2] <<")"<< std::endl;\
+		}
+		_TEST(RGB, RGB, 3);
+		_TEST(BGR, RGB, 3);
+		_TEST(RGBA, RGBA, 4);
+		_TEST(BGRA, RGBA, 4);
+#undef _TEST
+
+		std::cout << "---------test webp codec---------" << std::endl;
+#define _TEST(in, out, ch)\
+		{\
+			std::shared_ptr<unsigned char> data = nullptr; \
+			int w(0), h(0); \
+			YXL::Image::DecodeWebP_##in(data, w, h, test_img2); \
+			std::shared_ptr<unsigned char> data2 = nullptr;\
+			int size(0);\
+			YXL::Image::EncodeWebP_##out(data2, size, data.get(), w, h, 100);\
+			YXL::File::WriteFileContentBinary(GetTestDir() + "test_i"+#in+"_o"+#out+".webp", std::string((char*)data2.get(), size));\
+			std::cout<<"in("<<#in<<"):\t";\
+			std::cout << "(" << (int)data.get()[test_pix_y*w*ch + test_pix_x*ch] << "," << (int)data.get()[test_pix_y*w*ch + test_pix_x*ch + 1] << "," << (int)data.get()[test_pix_y*w*ch + test_pix_x*ch + 2] <<")"<< std::endl;\
+		}
+		_TEST(RGB, RGB, 3);
+		_TEST(BGR, RGB, 3);
+		_TEST(RGBA, RGBA, 4);
+		_TEST(BGRA, RGBA, 4);
+#undef _TEST
+
+#endif
+	}
 }

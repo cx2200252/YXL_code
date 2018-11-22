@@ -755,7 +755,7 @@ namespace YXL
 		marco(BGR, 3, false);\
 		marco(Grey, 1, false);
 
-#define IMPL_DECODE_FUNC(name, ch, is_rgb) void Decode##name(std::shared_ptr<unsigned char>& data, int& w, int& h, CStr& in_data)\
+#define IMPL_DECODE_FUNC(name, ch, is_rgb) void DecodePNG_##name(std::shared_ptr<unsigned char>& data, int& w, int& h, CStr& in_data)\
 		{\
 			DecodePNG(data, w, h, ch, in_data, is_rgb);\
 		}
@@ -848,7 +848,7 @@ namespace YXL
 #undef IMPL_DECODE_FUNC_WEBP
 
 #define IMPL_ENCODE_FUNC_WEBP(name, ch, is_rgb) \
-		void EncodeWebp_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h, const float quality)\
+		void EncodeWebP_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h, const float quality)\
 		{\
 			EncodeWebP(out_data, out_data_size, img, w, h, ch, is_rgb, quality);\
 		}

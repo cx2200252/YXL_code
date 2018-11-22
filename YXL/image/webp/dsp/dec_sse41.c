@@ -16,7 +16,7 @@
 #if defined(WEBP_USE_SSE41)
 
 #include <smmintrin.h>
-#include "../dec/vp8i.h"
+#include "../dec/dec_vp8i.h"
 #include "../utils/utils.h"
 
 static void HE16(uint8_t* dst) {     // horizontal

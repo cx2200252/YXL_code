@@ -16,8 +16,8 @@
 #if defined(WEBP_USE_SSE2)
 #include <emmintrin.h>
 
-#include "../enc/cost.h"
-#include "../enc/vp8enci.h"
+#include "../enc/enc_cost.h"
+#include "../enc/enc_vp8enci.h"
 #include "../utils/utils.h"
 
 //------------------------------------------------------------------------------

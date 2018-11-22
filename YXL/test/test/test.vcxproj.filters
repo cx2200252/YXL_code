@@ -22,6 +22,36 @@
     <Filter Include="YXL\cryptopp">
       <UniqueIdentifier>{6713ec67-8864-4473-9a79-1e78ed4c5434}</UniqueIdentifier>
     </Filter>
+    <Filter Include="YXL\image">
+      <UniqueIdentifier>{58e8d1b3-b530-4187-9004-15458e1198f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YXL\image\webp">
+      <UniqueIdentifier>{0cae09fb-1bea-46e4-8fbc-4a39eba91b4c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YXL\image\webp\dec">
+      <UniqueIdentifier>{b60c1031-5717-467a-a9a2-49b550bb8491}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YXL\image\webp\demux">
+      <UniqueIdentifier>{00b08946-cfb1-41d0-94f9-c605f93b911a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YXL\image\webp\dsp">
+      <UniqueIdentifier>{612cdfc6-37e1-4c90-815f-4442cee14efd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YXL\image\webp\enc">
+      <UniqueIdentifier>{ef87eaff-0054-429c-a371-afe80e304786}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YXL\image\webp\mux">
+      <UniqueIdentifier>{805f2926-0a29-4558-8d09-eb185c5275cb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YXL\image\webp\utils">
+      <UniqueIdentifier>{d5676dd5-666d-412f-9fec-0d24e60979f7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YXL\image\webp\webp">
+      <UniqueIdentifier>{0da618e5-5df7-4a81-a58b-0ecd816dd56b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YXL\image\stb_image">
+      <UniqueIdentifier>{d7db367f-231a-46e7-bab0-408fb4c4cb35}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -494,6 +524,342 @@
     </ClCompile>
     <ClCompile Include="..\..\YXLReportGenerator.cpp">
       <Filter>YXL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dec\dec_alpha.c">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dec\dec_buffer.c">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dec\dec_frame.c">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dec\dec_idec.c">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dec\dec_io.c">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dec\dec_quant.c">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dec\dec_tree.c">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dec\dec_vp8.c">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dec\dec_vp8l.c">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dec\dec_webp.c">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\demux\anim_decode.c">
+      <Filter>YXL\image\webp\demux</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\demux\demux.c">
+      <Filter>YXL\image\webp\demux</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\alpha_processing.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\alpha_processing_mips_dsp_r2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\alpha_processing_sse2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\alpha_processing_sse41.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\argb.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\argb_mips_dsp_r2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\argb_sse2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\cost.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\cost_mips32.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\cost_mips_dsp_r2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\cost_sse2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\dec.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\dec_clip_tables.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\dec_mips32.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\dec_mips_dsp_r2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\dec_msa.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\dec_neon.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\dec_sse2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\dec_sse41.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\dsp_cpu.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\enc.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\enc_avx2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\enc_mips32.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\enc_mips_dsp_r2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\enc_msa.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\enc_neon.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\enc_sse2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\enc_sse41.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\filters_mips_dsp_r2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\filters_msa.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\filters_sse2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless_enc.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless_enc_mips32.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless_enc_mips_dsp_r2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless_enc_msa.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless_enc_neon.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless_enc_sse2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless_enc_sse41.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless_mips_dsp_r2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless_msa.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless_neon.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\lossless_sse2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\rescaler.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\rescaler_mips32.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\rescaler_mips_dsp_r2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\rescaler_msa.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\rescaler_neon.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\rescaler_sse2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\upsampling.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\upsampling_mips_dsp_r2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\upsampling_msa.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\upsampling_neon.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\upsampling_sse2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\yuv.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\yuv_mips32.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\yuv_mips_dsp_r2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\yuv_sse2.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_alpha.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_analysis.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_backward_references.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_config.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_cost.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_delta_palettization.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_filter.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_frame.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_histogram.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_iterator.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_near_lossless.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_picture.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_picture_csp.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_picture_psnr.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_picture_rescale.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_picture_tools.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_predictor.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_quant.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_syntax.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_token.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_tree.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_vp8l.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\enc\enc_webpenc.c">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\mux\anim_encode.c">
+      <Filter>YXL\image\webp\mux</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\mux\muxedit.c">
+      <Filter>YXL\image\webp\mux</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\mux\muxinternal.c">
+      <Filter>YXL\image\webp\mux</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\mux\muxread.c">
+      <Filter>YXL\image\webp\mux</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\bit_reader.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\bit_writer.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\color_cache.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\huffman.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\huffman_encode.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\quant_levels.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\quant_levels_dec.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\random.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\thread.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\utils.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\utils_filters.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\utils\utils_rescaler.c">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\webp\dsp\dsp_filters.c">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\stb_image\stb_image.c">
+      <Filter>YXL\image\stb_image</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\image\stb_image\stb_image_write.c">
+      <Filter>YXL\image\stb_image</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -997,6 +1363,141 @@
     </ClInclude>
     <ClInclude Include="..\..\YXLReportGenerator.h">
       <Filter>YXL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dec\dec_alphai.h">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dec\dec_common.h">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dec\dec_decode_vp8.h">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dec\dec_vp8i.h">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dec\dec_vp8li.h">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dec\dec_webpi.h">
+      <Filter>YXL\image\webp\dec</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dsp\common_sse2.h">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dsp\dsp.h">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dsp\lossless.h">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dsp\lossless_common.h">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dsp\mips_macro.h">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dsp\msa_macro.h">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dsp\neon.h">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\dsp\yuv.h">
+      <Filter>YXL\image\webp\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\enc\enc_backward_references.h">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\enc\enc_cost.h">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\enc\enc_delta_palettization.h">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\enc\enc_histogram.h">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\enc\enc_vp8enci.h">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\enc\enc_vp8li.h">
+      <Filter>YXL\image\webp\enc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\mux\muxi.h">
+      <Filter>YXL\image\webp\mux</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\bit_reader.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\bit_reader_inl.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\bit_writer.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\color_cache.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\endian_inl.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\filters.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\huffman.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\huffman_encode.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\quant_levels.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\quant_levels_dec.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\random.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\rescaler.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\thread.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\utils\utils.h">
+      <Filter>YXL\image\webp\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\webp\decode.h">
+      <Filter>YXL\image\webp\webp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\webp\demux.h">
+      <Filter>YXL\image\webp\webp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\webp\encode.h">
+      <Filter>YXL\image\webp\webp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\webp\format_constants.h">
+      <Filter>YXL\image\webp\webp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\webp\mux.h">
+      <Filter>YXL\image\webp\webp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\webp\mux_types.h">
+      <Filter>YXL\image\webp\webp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\webp\webp\types.h">
+      <Filter>YXL\image\webp\webp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\stb_image\stb_image.h">
+      <Filter>YXL\image\stb_image</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\stb_image\stb_image_write.h">
+      <Filter>YXL\image\stb_image</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\image\stb_image\wrapper_defines.h">
+      <Filter>YXL\image\stb_image</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

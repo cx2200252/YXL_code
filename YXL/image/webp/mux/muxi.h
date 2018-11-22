@@ -15,8 +15,8 @@
 #define WEBP_MUX_MUXI_H_
 
 #include <stdlib.h>
-#include "../dec/vp8i.h"
-#include "../dec/vp8li.h"
+#include "../dec/dec_vp8i.h"
+#include "../dec/dec_vp8li.h"
 #include "../webp/mux.h"
 
 #ifdef __cplusplus
