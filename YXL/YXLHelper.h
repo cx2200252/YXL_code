@@ -15,14 +15,12 @@
 #define _YXL_TRANSFORM_
 #define _YXL_GRAPHIC_
 //#define _YXL_IMG_PROC_
-//#define _YXL_IMG_CODEC_
+#define _YXL_IMG_CODEC_
 //#define _YXL_MINI_Z_
 //#define _YXL_HASH_
 //#define _YXL_CIPHER_
 //#define _YXL_NACL_
 //#define _YXL_CRYPTO_
-
-
 
 //#define _YXL_GLFW_
 
@@ -1615,7 +1613,7 @@ namespace YXL
 #undef DECODE_FUNC
 		//decode
 
-#define ENCODE_FUNC(name) void EncodePNG_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h);
+#define ENCODE_FUNC(name) void EncodePNG_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, const unsigned char* img, const int w, const int h);
 		DECLARE_ALL(ENCODE_FUNC)
 #undef ENCODE_FUNC
 
@@ -1624,7 +1622,7 @@ namespace YXL
 		DECLARE_ALL(DECODE_FUNC_WEBP);
 #undef DECODE_FUNC_WEBP
 
-#define ENCODE_FUNC_WEBP(name) void EncodeWebP_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h, const float quality);
+#define ENCODE_FUNC_WEBP(name) void EncodeWebP_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, const unsigned char* img, const int w, const int h, const float quality);
 		// @quality: 
 		//	[0-100): lossy
 		//	>=100: lossless

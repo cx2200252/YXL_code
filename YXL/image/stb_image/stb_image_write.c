@@ -420,7 +420,7 @@ static unsigned char stbiw__paeth(int a, int b, int c)
    return (unsigned char) c;
 }
 
-unsigned char *stbi_write_png_to_mem(unsigned char *pixels, int stride_bytes, int x, int y, int n, int *out_len)
+unsigned char *stbi_write_png_to_mem(const unsigned char *pixels, int stride_bytes, int x, int y, int n, int *out_len)
 {
    int ctype[5] = { -1, 0, 4, 2, 6 };
    unsigned char sig[8] = { 137,80,78,71,13,10,26,10 };
@@ -441,7 +441,7 @@ unsigned char *stbi_write_png_to_mem(unsigned char *pixels, int stride_bytes, in
       for (p=0; p < 2; ++p) {
          for (k= p?best:0; k < 5; ++k) {
             int type = mymap[k],est=0;
-            unsigned char *z = pixels + stride_bytes*j;
+            const unsigned char *z = pixels + stride_bytes*j;
             for (i=0; i < n; ++i)
                switch (type) {
                   case 0: line_buffer[i] = z[i]; break;

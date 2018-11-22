@@ -731,7 +731,7 @@ namespace YXL
 			if (req_ch >= 3 && is_rgb==false)
 				SwapRBChannel(data, w, h, req_ch);
 		}
-		void EncodePNG(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h, const int ch, const bool is_rgb)
+		void EncodePNG(std::shared_ptr<unsigned char>& out_data, int& out_data_size, const unsigned char* img, const int w, const int h, const int ch, const bool is_rgb)
 		{
 			if (ch >= 3 && is_rgb==false)
 			{
@@ -764,7 +764,7 @@ namespace YXL
 #undef IMPL_DECODE_FUNC
 
 #define IMPL_ENCODE_FUNC(name, ch, is_rgb) \
-		void EncodePNG_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h)\
+		void EncodePNG_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, const unsigned char* img, const int w, const int h)\
 		{\
 			EncodePNG(out_data, out_data_size, img, w, h, ch, is_rgb);\
 		}
@@ -797,12 +797,12 @@ namespace YXL
 			}
 		}
 		void EncodeWebP(std::shared_ptr<unsigned char>& out_data, int& out_data_size, 
-			unsigned char* img, const int w, const int h, const int ch, 
+			const unsigned char* img, const int w, const int h, const int ch, 
 			const bool is_rgb, const float quality)
 		{
 			out_data = nullptr;
 			int _ch = ch;
-			unsigned char* _img = img;
+			const unsigned char* _img = img;
 
 			std::shared_ptr<unsigned char> tmp = nullptr;
 			if (ch == 1)
@@ -848,7 +848,7 @@ namespace YXL
 #undef IMPL_DECODE_FUNC_WEBP
 
 #define IMPL_ENCODE_FUNC_WEBP(name, ch, is_rgb) \
-		void EncodeWebP_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, unsigned char* img, const int w, const int h, const float quality)\
+		void EncodeWebP_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, const unsigned char* img, const int w, const int h, const float quality)\
 		{\
 			EncodeWebP(out_data, out_data_size, img, w, h, ch, is_rgb, quality);\
 		}
