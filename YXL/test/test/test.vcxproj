@@ -293,8 +293,8 @@
     <ClCompile Include="..\..\cryptopp\zdeflate.cpp" />
     <ClCompile Include="..\..\cryptopp\zinflate.cpp" />
     <ClCompile Include="..\..\cryptopp\zlib.cpp" />
-    <ClCompile Include="..\..\image\stb_image\stb_image.c" />
-    <ClCompile Include="..\..\image\stb_image\stb_image_write.c" />
+    <ClCompile Include="..\..\image\stb_image\stb_image.cpp" />
+    <ClCompile Include="..\..\image\stb_image\stb_image_write.cpp" />
     <ClCompile Include="..\..\image\webp\dec\dec_alpha.c" />
     <ClCompile Include="..\..\image\webp\dec\dec_buffer.c" />
     <ClCompile Include="..\..\image\webp\dec\dec_frame.c" />

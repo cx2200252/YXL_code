@@ -855,10 +855,10 @@
     <ClCompile Include="..\..\image\webp\dsp\dsp_filters.c">
       <Filter>YXL\image\webp\dsp</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\image\stb_image\stb_image.c">
+    <ClCompile Include="..\..\image\stb_image\stb_image.cpp">
       <Filter>YXL\image\stb_image</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\image\stb_image\stb_image_write.c">
+    <ClCompile Include="..\..\image\stb_image\stb_image_write.cpp">
       <Filter>YXL\image\stb_image</Filter>
     </ClCompile>
   </ItemGroup>

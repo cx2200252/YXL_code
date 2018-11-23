@@ -38,6 +38,7 @@
 #include <stack>
 #include <thread>
 #include <random>
+#include <cstdarg>
 
 #pragma warning(disable:4819)
 #ifdef YXL_HELPER_DYNAMIC
