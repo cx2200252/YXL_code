@@ -8,6 +8,7 @@
 #define _YXL_PARAM_PARSER_
 #define _YXL_PRINT_
 #define _YXL_OUT_STREAM_
+#define _YXL_LOG_
 #define _YXL_UNION_FIND_
 #define _YXL_KD_TREE_
 #define _YXL_TIME_
@@ -15,7 +16,7 @@
 #define _YXL_TRANSFORM_
 #define _YXL_GRAPHIC_
 //#define _YXL_IMG_PROC_
-#define _YXL_IMG_CODEC_
+//#define _YXL_IMG_CODEC_
 //#define _YXL_MINI_Z_
 //#define _YXL_HASH_
 //#define _YXL_CIPHER_
@@ -803,6 +804,99 @@ namespace YXL
 #endif
 	extern YXLOut yxlout;
 }
+#endif
+
+#ifdef _YXL_LOG_
+namespace YXL
+{
+	class Logger
+	{
+		struct Node
+		{
+			Node(Node* par):parent(par)
+			{
+			}
+			~Node()
+			{
+			}
+			std::string log;
+			Node* parent = nullptr;
+			std::vector<std::shared_ptr<Node>> childs;
+		};
+	public:
+		Logger()
+			:_root(std::shared_ptr<Node>(new Node(nullptr)))
+		{
+			_cur = _root.get();
+		}
+
+		void Reset()
+		{
+			_root = std::shared_ptr<Node>(new Node(nullptr));
+			_cur = _root.get();
+		}
+
+		void Up()
+		{
+			if (_cur->parent == nullptr)
+				return;
+			_cur = _cur->parent;
+		}
+		void Down()
+		{
+			if (_cur->childs.empty())
+				Next();
+			_cur = _cur->childs.rbegin()->get();
+		}
+
+		void Log(const char* format, ...)
+		{
+			va_list arg;
+			va_start(arg, format);
+			vsprintf(_buf, format, arg);
+			va_end(arg);
+			if (_cur->childs.empty())
+				Next();
+			(*_cur->childs.rbegin())->log = _buf;
+			Next();
+#if defined(ANDROID)||defined(__ANDROID__)
+			__android_log_write(ANDROID_LOG_INFO, "STDOUT", _buf);
+#else
+			printf("%s\n", _buf);
+			fflush(stdout);
+#endif
+		}
+
+		void GetLog(std::string& log)
+		{
+			std::stringstream ss;
+			for (int i(0); i + 1 < _root->childs.size(); ++i)
+				GetLog(ss, _root->childs[i].get(), "");
+			log = ss.str();
+		}
+
+	private:
+		void GetLog(std::ostream& out, Node* node, const std::string& padding)
+		{
+			if (nullptr == node)
+				return;
+			out << padding << node->log << "\n";
+			for (int i(0); i + 1 < node->childs.size(); ++i)
+				GetLog(out, node->childs[i].get(), padding + "\t");
+		}
+		void Next()
+		{
+			_cur->childs.push_back(std::shared_ptr<Node>(new Node(_cur)));
+		}
+
+	private:
+		std::string _padding = "";
+		std::shared_ptr<Node> _root = nullptr;
+		Node* _cur = nullptr;
+		char _buf[256];
+	};
+}
+
 #endif
 
 #ifdef _YXL_UNION_FIND_

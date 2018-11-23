@@ -29,6 +29,40 @@ namespace YXL_TEST
 		std::cout << std::endl;
 	}
 
+#ifdef _YXL_LOG_
+	void Log(std::shared_ptr<YXL::Logger> logger, int level, int& idx)
+	{
+		if (level == 3)
+			return;
+		for (int i(0); i != 3; ++i)
+		{
+			logger->Down();
+			Log(logger, level + 1, idx);
+			logger->Up();
+			logger->Log("level %d: %d", level, idx++);
+		}
+	}
+#endif
+
+	void TestLog()
+	{
+		std::cout << "*********************************************************************************" << std::endl;
+#ifndef _YXL_LOG_
+		std::cout << "log not enable..." << std::endl;
+#else
+		std::shared_ptr<YXL::Logger> logger(new YXL::Logger);
+		int idx = 0;
+		Log(logger, 0, idx);
+		logger->Log("level %d: %d", 0, idx++);
+
+		std::cout << "---------" << std::endl;
+		std::string str;
+		logger->GetLog(str);
+		std::cout << str;
+		std::cout << "---------" << std::endl;
+#endif
+	}
+
 	void TestZip()
 	{
 		std::cout << "*********************************************************************************" << std::endl;

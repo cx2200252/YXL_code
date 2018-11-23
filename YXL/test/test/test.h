@@ -11,8 +11,9 @@ namespace YXL_TEST
 		return ret;
 	}
 
-
 	void TestJson();
+	void TestLog();
+
 	void TestZip();
 	void TestNaCL();
 	void TestCrypto();
