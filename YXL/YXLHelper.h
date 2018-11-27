@@ -842,12 +842,14 @@ namespace YXL
 			if (_cur->parent == nullptr)
 				return;
 			_cur = _cur->parent;
+			_padding = _padding.substr(0, _padding.length() - 1);
 		}
 		void Down()
 		{
 			if (_cur->childs.empty())
 				Next();
 			_cur = _cur->childs.rbegin()->get();
+			_padding += "\t";
 		}
 
 		void Log(const char* format, ...)
@@ -861,9 +863,10 @@ namespace YXL
 			(*_cur->childs.rbegin())->log = _buf;
 			Next();
 #if defined(ANDROID)||defined(__ANDROID__)
-			__android_log_write(ANDROID_LOG_INFO, "STDOUT", _buf);
+			std::string tmp = _padding + _buf;
+			__android_log_write(ANDROID_LOG_INFO, "STDOUT", tmp.c_str());
 #else
-			printf("%s\n", _buf);
+			printf("%s%s\n", _padding.c_str(), _buf);
 			fflush(stdout);
 #endif
 		}
@@ -2048,6 +2051,10 @@ namespace YXL
 			void DiscardFile(std::string fn)
 			{
 				_zip->RemoveFile(fn);
+			}
+			void GetFiles(std::map<std::string, std::string>& files)
+			{
+				_zip->GetFiles(files);
 			}
 
 		private:
