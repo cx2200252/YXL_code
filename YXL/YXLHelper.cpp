@@ -3290,6 +3290,11 @@ namespace YXL
 		if (s_glfw_map.find(window) != s_glfw_map.end())
 			s_glfw_map[window]->ScrollCallback(xoffset, yoffset);
 	}
+	void _GLFWCursorPosCallback(GLFWwindow* window, double x, double y)
+	{
+		if (s_glfw_map.find(window) != s_glfw_map.end())
+			s_glfw_map[window]->CursorPosCallback(x, y);
+	}
 
 	bool GLFWBase::Init(const int wnd_w, const int wnd_h, const bool hidden)
 	{
@@ -3318,6 +3323,7 @@ namespace YXL
 		s_glfw_map[_wnd] = this;
 		glfwSetKeyCallback(_wnd, YXL::_GLFWKeyCallback);
 		glfwSetMouseButtonCallback(_wnd, YXL::_GLFWMouseButtonCallback);
+		glfwSetCursorPosCallback(_wnd, _GLFWCursorPosCallback);
 		glfwSetScrollCallback(_wnd, YXL::_GLFWScrollCallback);
 		return true;
 

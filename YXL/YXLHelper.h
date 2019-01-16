@@ -2791,6 +2791,10 @@ namespace YXL
 		{
 
 		}
+		virtual void CursorPosCallback(double x, double y)
+		{
+
+		}
 		virtual void SetWindowTitle(const std::string title)
 		{
 			glfwSetWindowTitle(_wnd, title.c_str());
