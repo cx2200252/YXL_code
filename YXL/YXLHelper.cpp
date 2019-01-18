@@ -3325,9 +3325,10 @@ namespace YXL
 		glfwSetMouseButtonCallback(_wnd, YXL::_GLFWMouseButtonCallback);
 		glfwSetCursorPosCallback(_wnd, _GLFWCursorPosCallback);
 		glfwSetScrollCallback(_wnd, YXL::_GLFWScrollCallback);
-		return true;
 
 		inited = true;
+
+		return true;
 	}
 	void GLFWBase::Run()
 	{
