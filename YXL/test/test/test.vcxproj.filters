@@ -861,6 +861,15 @@
     <ClCompile Include="..\..\image\stb_image\stb_image.c">
       <Filter>YXL\image\stb_image</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\miniz\miniz_tdef.c">
+      <Filter>YXL\miniz</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\miniz\miniz_tinfl.c">
+      <Filter>YXL\miniz</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\miniz\miniz_zip.c">
+      <Filter>YXL\miniz</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="test.h">
@@ -1498,6 +1507,18 @@
     </ClInclude>
     <ClInclude Include="..\..\image\stb_image\wrapper_defines.h">
       <Filter>YXL\image\stb_image</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\miniz\miniz_common.h">
+      <Filter>YXL\miniz</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\miniz\miniz_tdef.h">
+      <Filter>YXL\miniz</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\miniz\miniz_tinfl.h">
+      <Filter>YXL\miniz</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\miniz\miniz_zip.h">
+      <Filter>YXL\miniz</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

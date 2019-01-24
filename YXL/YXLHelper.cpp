@@ -864,6 +864,7 @@ namespace YXL
 
 #ifdef _YXL_MINI_Z_
 #include "miniz/miniz.h"
+#include "miniz/miniz_zip.h"
 namespace YXL
 {
 	namespace ZIP

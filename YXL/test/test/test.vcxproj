@@ -406,6 +406,9 @@
     <ClCompile Include="..\..\image\webp\utils\utils_filters.c" />
     <ClCompile Include="..\..\image\webp\utils\utils_rescaler.c" />
     <ClCompile Include="..\..\miniz\miniz.c" />
+    <ClCompile Include="..\..\miniz\miniz_tdef.c" />
+    <ClCompile Include="..\..\miniz\miniz_tinfl.c" />
+    <ClCompile Include="..\..\miniz\miniz_zip.c" />
     <ClCompile Include="..\..\YXLHelper.cpp" />
     <ClCompile Include="..\..\YXLJsonStruct.cpp" />
     <ClCompile Include="..\..\YXLReportGenerator.cpp" />
@@ -621,6 +624,10 @@
     <ClInclude Include="..\..\image\webp\webp\mux_types.h" />
     <ClInclude Include="..\..\image\webp\webp\types.h" />
     <ClInclude Include="..\..\miniz\miniz.h" />
+    <ClInclude Include="..\..\miniz\miniz_common.h" />
+    <ClInclude Include="..\..\miniz\miniz_tdef.h" />
+    <ClInclude Include="..\..\miniz\miniz_tinfl.h" />
+    <ClInclude Include="..\..\miniz\miniz_zip.h" />
     <ClInclude Include="..\..\YXLHelper.h" />
     <ClInclude Include="..\..\YXLJsonWarpper.h" />
     <ClInclude Include="..\..\YXLJsonStruct.h" />

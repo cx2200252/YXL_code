@@ -8,7 +8,7 @@
 #define _YXL_PARAM_PARSER_
 #define _YXL_PRINT_
 #define _YXL_OUT_STREAM_
-#define _YXL_LOG_
+//#define _YXL_LOG_
 #define _YXL_UNION_FIND_
 #define _YXL_KD_TREE_
 #define _YXL_TIME_
