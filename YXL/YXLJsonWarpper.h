@@ -490,8 +490,6 @@ namespace YXL
 			//write (overwrite)
 			template<typename type> bool SetMember(const std::string& name, const type* vals, const int cnt, rapidjson::Value& parent)
 			{
-				if (0 >= cnt)
-					return false;
 				while (parent.HasMember(name.c_str()))
 					parent.RemoveMember(name.c_str());
 				return AddMember(name, vals, cnt, parent);
@@ -502,6 +500,8 @@ namespace YXL
 			}
 			template<typename type> bool SetMember(const std::string& name, std::vector<type>& vals, rapidjson::Value& parent)
 			{
+				if(vals.empty())
+					return SetMember(name, (type*)nullptr, vals.size(), parent);
 				return SetMember(name, &vals[0], vals.size(), parent);
 			}
 			template<typename type> bool SetMember(const std::string& name, std::vector<type>& vals)
@@ -522,8 +522,6 @@ namespace YXL
 			}
 			template<typename type> bool AddMember(const std::string& name, const type* vals, const int cnt, rapidjson::Value& parent)
 			{
-				if (0 >= cnt)
-					return false;
 				rapidjson::Value v(rapidjson::Type::kArrayType);
 				for (int i(0); i != cnt; ++i)
 					v.PushBack(ToJsonValue(type, vals[i], _doc), _doc.GetAllocator());

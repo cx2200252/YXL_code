@@ -1,4 +1,4 @@
-import Assist
+from . import Assist
 import sys
 import os
 

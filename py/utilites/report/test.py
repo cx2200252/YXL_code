@@ -62,4 +62,5 @@ def testText(doc):
 
 if __name__=="__main__":
     # temp = Assist.textTemplate2Json("test/test.txt")
-    Assist.jsonTemplate2Pdf("G:/C++/p2a/p2a/p2a_client/result/rep/report.json")
+    # Assist.jsonTemplate2Pdf("G:/C++/p2a/p2a/p2a_client/result/rep/report.json")
+    testImg()
