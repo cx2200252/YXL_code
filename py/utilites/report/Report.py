@@ -5,6 +5,7 @@
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
+from reportlab.lib.units import mm, inch
 import reportlab.lib.pagesizes as PageSizes
 import reportlab.lib.colors as Colors
 import reportlab.lib.units as Units
@@ -352,6 +353,7 @@ class RepEleImage(ReportElement):
     def setImage(self, img_path):
         if os.path.exists(img_path) == False:
             return
+        # print("loading: %s"%img_path)
         self.img_path=img_path
         self.img=ImageReader(img_path)
         self.img_size=self.img.getSize()

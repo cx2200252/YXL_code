@@ -4,7 +4,7 @@
 # import sys
 # sys.path.append(".")
 
-import Report
+from . import Report
 import json
 import copy
 import os
@@ -101,7 +101,8 @@ class ReportRow:
         x=0.0
         for c in self.child:
             w=c["size"][0] * scale
-            h=c["size"][1] * scale
+            # h=c["size"][1] * scale
+            h=c["size"][1]
             c["size"] = [w, h]
             c["pos"]=[x, (1.0-h)/2]
             x=x+w
@@ -214,5 +215,7 @@ def jsonTemplate2Pdf(fn, page_size=Report.PageSizes.A4):
     fn_pdf = os.path.splitext(fn)[0]+".pdf"
     doc = Report.Doc(fn_pdf, page_size)
     drawer = Json2PDF()
+    print("drawing...")
     drawer.DrawJson(temp, doc)
+    print("saving: %s"%fn_pdf)
     doc.saveDoc()
