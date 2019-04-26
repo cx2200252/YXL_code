@@ -6,9 +6,9 @@
 #define _YXL_FILES_
 #define _YXL_STRING_
 #define _YXL_PARAM_PARSER_
-#define _YXL_PRINT_
 #define _YXL_OUT_STREAM_
-//#define _YXL_LOG_
+#define _YXL_PRINT_
+#define _YXL_LOG_
 #define _YXL_UNION_FIND_
 #define _YXL_KD_TREE_
 #define _YXL_TIME_
@@ -659,65 +659,6 @@ namespace YXL
 }
 #endif
 
-#ifdef _YXL_PRINT_
-namespace YXL
-{
-	template<typename type> void _print(type t, const int i)
-	{
-		std::cout << '\t' << t[i];
-	}
-	template<typename type> void _print2(type t, const int i)
-	{
-		if (i)
-			std::cout << ',';
-		std::cout <<t[i];
-	}
-
-	template<typename... type> void PrintVector(const int vec_len, const type*... vecs)
-	{
-		const int arg_cnt = sizeof...(vecs);
-		std::cout << "[";
-		for (int i(0); i != vec_len; ++i)
-		{
-			if (i)
-				std::cout << ",";
-			if(arg_cnt>1)
-				std::cout << "(";
-			int tmp[] = { (_print2(vecs, i), 0)... };
-			if(arg_cnt>1)
-				std::cout << ")";
-		}
-		std::cout << "]" << std::endl;
-	}
-	
-	template<typename... type> void PrintVectorAsRow(int vec_len, type*... vecs)
-	{
-		for (int i(0); i != vec_len; ++i)
-		{
-			std::cout << i << ":";
-			int tmp[] = { (_print(vecs, i), 0)... };
-			std::cout << "\n";
-		}
-		
-	}
-
-	template<typename type> void PrintVector(std::vector<type>& v)
-	{
-		PrintVector(v.size(), v.data());
-	}
-	template<typename type> void PrintVectorAsRow(std::vector<type>& v)
-	{
-		PrintVectorAsRow(v.size(), v.data());
-	}
-
-	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m, const std::string& padding = "")
-	{
-		for (auto iter = m.begin(); iter != m.end(); ++iter)
-			YXL::yxlout << padding << iter->first << '\t' << iter->second << "\n";
-	}
-}
-#endif
-
 #ifdef _YXL_OUT_STREAM_
 namespace YXL
 {
@@ -804,6 +745,65 @@ namespace YXL
 #define YXL_LOG_PREFIX "["<<__FUNCTION__<<"] "
 #endif
 	extern YXLOut yxlout;
+}
+#endif
+
+#ifdef _YXL_PRINT_
+namespace YXL
+{
+	template<typename type> void _print(type t, const int i)
+	{
+		std::cout << '\t' << t[i];
+	}
+	template<typename type> void _print2(type t, const int i)
+	{
+		if (i)
+			std::cout << ',';
+		std::cout << t[i];
+	}
+
+	template<typename... type> void PrintVector(const int vec_len, const type*... vecs)
+	{
+		const int arg_cnt = sizeof...(vecs);
+		std::cout << "[";
+		for (int i(0); i != vec_len; ++i)
+		{
+			if (i)
+				std::cout << ",";
+			if (arg_cnt>1)
+				std::cout << "(";
+			int tmp[] = { (_print2(vecs, i), 0)... };
+			if (arg_cnt>1)
+				std::cout << ")";
+		}
+		std::cout << "]" << std::endl;
+	}
+
+	template<typename... type> void PrintVectorAsRow(int vec_len, type*... vecs)
+	{
+		for (int i(0); i != vec_len; ++i)
+		{
+			std::cout << i << ":";
+			int tmp[] = { (_print(vecs, i), 0)... };
+			std::cout << "\n";
+		}
+
+	}
+
+	template<typename type> void PrintVector(std::vector<type>& v)
+	{
+		PrintVector(v.size(), v.data());
+	}
+	template<typename type> void PrintVectorAsRow(std::vector<type>& v)
+	{
+		PrintVectorAsRow(v.size(), v.data());
+	}
+
+	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m, const std::string& padding = "")
+	{
+		for (auto iter = m.begin(); iter != m.end(); ++iter)
+			YXL::yxlout << padding << iter->first << '\t' << iter->second << "\n";
+	}
 }
 #endif
 
@@ -1525,7 +1525,6 @@ namespace YXL
 #endif
 }
 #endif
-
 
 #ifdef _YXL_UNION_FIND_
 namespace YXL

@@ -575,6 +575,8 @@ namespace YXL
 				if (par.HasMember(name.c_str()) && par[name.c_str()].IsArray())
 				{
 					dest.resize(par[name.c_str()].Size());
+					if (dest.empty())
+						return true;
 					return ReadValue(&dest[0], dest.size(), name, par);
 				}
 				else
