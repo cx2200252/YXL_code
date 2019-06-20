@@ -412,7 +412,7 @@ namespace YXL
 #if defined(_WITH_WINDOWS_) || defined(_WITH_QT_)
 		static std::string ToAbsolutePath(const std::string& path)
 		{
-			ToAbsolutePath(path, GetWkDir());
+			return ToAbsolutePath(path, GetWkDir());
 		}
 #endif
 
