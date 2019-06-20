@@ -238,6 +238,16 @@ namespace YXL
 			if (std::string::npos != prePos)
 				res.push_back(src.substr(prePos, src.length() - prePos));
 		}
+
+		inline int GetLastNumber(const std::string& str)
+		{
+			auto pos_end = str.find_last_of("0123456789");
+			auto pos_beg = str.find_last_not_of("0123456789", pos_end);
+			if (pos_beg + 1 == str.length())
+				return 0;
+			int ret = atoi(str.data() + pos_beg + 1);
+			return ret;
+		}
 	}
 }
 #endif
