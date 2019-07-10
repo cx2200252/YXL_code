@@ -371,6 +371,19 @@ namespace YXL
 			return true;
 		}
 
+		static bool WriteFileContentBinary(const std::string& filepath, const char* data, const int data_size)
+		{
+			std::ofstream fout(filepath, std::ios::binary);
+			if (false == fout.good())
+			{
+				fout.close();
+				return false;
+			}
+			fout.write(data, data_ssize);
+			fout.close();
+			return true;
+		}
+
 		static void LoadFileContent(const std::string& path, std::string& content, const std::string ignore="")
 		{
 			content = "";
