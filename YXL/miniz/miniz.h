@@ -111,6 +111,8 @@
      (i.e. 32-bit stat() fails for me on files > 0x7FFFFFFF bytes).
 */
 #pragma once
+#ifndef _MINIZ_H_
+#define _MINIZ_H_
 
 #include "miniz_common.h"
 #include "miniz_tdef.h"
@@ -471,4 +473,5 @@ typedef void *const voidpc;
 
 #ifdef __cplusplus
 }
+#endif
 #endif

@@ -1,4 +1,6 @@
 #pragma once
+#ifndef _MINIZ_COMMON_H_
+#define _MINIZ_COMMON_H_
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -88,4 +90,5 @@ extern void *miniz_def_realloc_func(void *opaque, void *address, size_t items, s
 
 #ifdef __cplusplus
 }
+#endif
 #endif

@@ -1,4 +1,6 @@
 #pragma once
+#ifndef _MINIZ_TINFL_H_
+#define _MINIZ_TINFL_H_
 #include "miniz_common.h"
 /* ------------------- Low-level Decompression API Definitions */
 
@@ -141,4 +143,5 @@ struct tinfl_decompressor_tag
 
 #ifdef __cplusplus
 }
+#endif
 #endif

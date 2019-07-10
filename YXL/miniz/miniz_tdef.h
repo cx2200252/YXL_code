@@ -1,4 +1,6 @@
 #pragma once
+#ifndef _MINIZ_TDEF_H_
+#define _MINIZ_TDEF_H_
 #include "miniz_common.h"
 
 #ifdef __cplusplus
@@ -187,4 +189,5 @@ void tdefl_compressor_free(tdefl_compressor *pComp);
 
 #ifdef __cplusplus
 }
+#endif
 #endif
