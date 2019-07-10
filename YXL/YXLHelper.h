@@ -379,7 +379,7 @@ namespace YXL
 				fout.close();
 				return false;
 			}
-			fout.write(data, data_ssize);
+			fout.write(data, data_size);
 			fout.close();
 			return true;
 		}
