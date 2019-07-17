@@ -695,28 +695,24 @@ namespace YXL
 	class Semaphore
 	{
 	public:
-		Semaphore(const unsigned int init_available = 1) :_available(init_available), _to_wakeups(0) {}
+		Semaphore(const unsigned int init_available = 1) :_available(init_available){}
 
 		void Wait()
 		{
 			std::unique_lock<std::mutex> lock(_mutex);
+			std::cout << lock.owns_lock() << std::endl;
 			if (--_available < 0)
-			{
 				_condition.wait(lock);
-			}
 		}
 		void Signal()
 		{
 			std::lock_guard<std::mutex> lock(_mutex);
 			if (++_available <= 0)
-			{
 				_condition.notify_one();
-			}
 		}
 
 	private:
 		int _available;
-		int _to_wakeups;
 		std::mutex _mutex;
 		std::condition_variable _condition;
 	};
