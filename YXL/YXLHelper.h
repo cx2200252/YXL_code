@@ -6,6 +6,7 @@
 #define _YXL_FILES_
 #define _YXL_STRING_
 #define _YXL_PARAM_PARSER_
+#define _YXL_THREAD_
 #define _YXL_OUT_STREAM_
 #define _YXL_PRINT_
 #define _YXL_LOG_
@@ -51,6 +52,10 @@
 #endif
 #else
 #define LIB_YXL_HELPER
+#endif
+
+#ifndef _YXL_OUT_STREAM_
+#undef _YXL_LOG_
 #endif
 
 namespace YXL
@@ -680,6 +685,43 @@ namespace YXL
 		}
 	}
 }
+#endif
+
+#ifdef _YXL_THREAD_
+#include <mutex>
+#include <condition_variable>
+namespace YXL
+{
+	class Semaphore
+	{
+	public:
+		Semaphore(const unsigned int init_available = 1) :_available(init_available), _to_wakeups(0) {}
+
+		void Wait()
+		{
+			std::unique_lock<std::mutex> lock(_mutex);
+			if (--_available < 0)
+			{
+				_condition.wait(lock);
+			}
+		}
+		void Signal()
+		{
+			std::lock_guard<std::mutex> lock(_mutex);
+			if (++_available <= 0)
+			{
+				_condition.notify_one();
+			}
+		}
+
+	private:
+		int _available;
+		int _to_wakeups;
+		std::mutex _mutex;
+		std::condition_variable _condition;
+	};
+}
+
 #endif
 
 #ifdef _YXL_OUT_STREAM_
@@ -2734,8 +2776,6 @@ namespace YXL
 	}
 }
 #endif
-
-
 
 #ifdef _YXL_HASH_
 namespace YXL

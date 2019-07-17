@@ -504,4 +504,67 @@ namespace YXL_TEST
 
 #endif
 	}
+
+	void TestSemaphore()
+	{
+		std::shared_ptr<YXL::Semaphore> semaphore = nullptr;
+
+		auto func = [&]() {
+			std::cout << YXL::GetCurrentThreadID() << "\twaiting..." << std::endl;
+			semaphore->Wait();
+			std::cout << YXL::GetCurrentThreadID() << "\tsigned..." << std::endl;
+		};
+
+		{
+			std::cout << "case 0" << std::endl;
+			semaphore = std::shared_ptr<YXL::Semaphore>(new YXL::Semaphore(0));
+
+			std::thread t(func);
+			t.detach();
+			YXL::Sleep(1);
+
+			std::thread t2(func);
+			t2.detach();
+			YXL::Sleep(1);
+
+			std::cout << YXL::GetCurrentThreadID() << "\tbefore signal..." << std::endl;
+			YXL::Sleep(5000);
+			semaphore->Signal();
+			YXL::Sleep(3000);
+			semaphore->Signal();
+			std::cout << YXL::GetCurrentThreadID() << "\tafter signal..." << std::endl;
+		}
+		{
+			std::cout << "case 1" << std::endl;
+			semaphore = std::shared_ptr<YXL::Semaphore>(new YXL::Semaphore(1));
+
+			std::thread t(func);
+			t.detach();
+			YXL::Sleep(1);
+
+			std::thread t2(func);
+			t2.detach();
+			YXL::Sleep(1);
+
+			std::cout << YXL::GetCurrentThreadID() << "\tbefore signal..." << std::endl;
+			YXL::Sleep(5000);
+			semaphore->Signal();
+			YXL::Sleep(3000);
+			semaphore->Signal();
+			std::cout << YXL::GetCurrentThreadID() << "\tafter signal..." << std::endl;
+		}
+		{
+			std::cout << "case 2" << std::endl;
+			semaphore = std::shared_ptr<YXL::Semaphore>(new YXL::Semaphore(0));
+
+			std::thread t(func);
+			t.detach();
+			YXL::Sleep(1);
+
+			std::cout << YXL::GetCurrentThreadID() << "\tbefore signal..." << std::endl;
+			YXL::Sleep(5000);
+			semaphore->Signal();
+			std::cout << YXL::GetCurrentThreadID() << "\tafter signal..." << std::endl;
+		}
+	}
 }

@@ -19,4 +19,6 @@ namespace YXL_TEST
 	void TestCrypto();
 	void TestImage();
 
+	void TestSemaphore();
+
 }
