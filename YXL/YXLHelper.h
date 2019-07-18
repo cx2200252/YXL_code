@@ -700,7 +700,6 @@ namespace YXL
 		void Wait()
 		{
 			std::unique_lock<std::mutex> lock(_mutex);
-			std::cout << lock.owns_lock() << std::endl;
 			if (--_available < 0)
 				_condition.wait(lock);
 		}
