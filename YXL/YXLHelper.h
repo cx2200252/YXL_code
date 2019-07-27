@@ -338,7 +338,7 @@ namespace YXL
 		static size_t FileSize(const std::string& filename)
 		{
 			std::ifstream fin(filename);
-			size_t ret = FileSize(fin);
+			size_t ret = fin.good() ? FileSize(fin) : 0;
 			fin.close();
 			return ret;
 		}
@@ -623,6 +623,16 @@ namespace YXL
 		static void RunProgram(CStr &fileName, CStr &parameters = "", bool waiteF = false, bool showW = true);
 	private:
 		static std::shared_ptr<QApplication> _app;
+#else
+		static bool FileExist(CStr& filePath)
+		{
+			if (filePath.size() == 0)
+				return false;
+			std::ifstream fin(filePath);
+			bool ret = fin.good();
+			fin.close();
+			return  ret;
+		}
 #endif
 #endif
 	};
@@ -968,18 +978,25 @@ namespace YXL
 {
 	inline std::string GetCurTime(const char* format_ymd_hms)
 	{
-		auto tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		using namespace std::chrono;
+		auto now = system_clock::now();
+		auto ms = duration_cast<milliseconds>(now.time_since_epoch()).count();
+		auto s = duration_cast<seconds>(now.time_since_epoch()).count();
+
+		auto tmp = ms - s * 1000;
+
+		auto tt = std::chrono::system_clock::to_time_t(now);
 		struct tm* ptm = localtime(&tt);
 		char date[60] = { 0 };
 		sprintf(date, format_ymd_hms,
 			(int)ptm->tm_year + 1900, (int)ptm->tm_mon + 1, (int)ptm->tm_mday,
-			(int)ptm->tm_hour, (int)ptm->tm_min, (int)ptm->tm_sec);
+			(int)ptm->tm_hour, (int)ptm->tm_min, (int)ptm->tm_sec, (int)tmp);
 		return std::string(date);
 	}
 
 	inline std::string GetCurTime()
 	{
-		return GetCurTime("%04d%02d%02d_%02d%02d%02d");
+		return GetCurTime("%04d%02d%02d_%02d%02d%02d.%03d");
 	}
 
 	inline void Sleep(double ms)
