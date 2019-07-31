@@ -42,7 +42,6 @@ namespace YXL
 	}
 
 #ifdef _WITH_WINDOWS_
-
 	std::pair<DWORD, DWORD> File::GetFileInfo(const std::string& file_path, FileInfo fi)
 	{
 		WIN32_FIND_DATAA ffd;
@@ -580,7 +579,7 @@ namespace YXL
 #endif
 #endif
 }
-#endif
+#endif //_YXL_FILES_
 
 #ifdef _YXL_UNION_FIND_
 namespace YXL
@@ -617,7 +616,7 @@ namespace YXL
 
 	} 
 }
-#endif
+#endif //_YXL_UNION_FIND_
 
 #ifdef _YXL_IMG_PROC_
 namespace YXL
@@ -693,13 +692,19 @@ namespace YXL
 			return cv::Mat();
 	}
 }
-#endif
+#endif //_YXL_IMG_PROC_
 
 #ifdef _YXL_IMG_CODEC_
+#define IMPL_ALL(marco) \
+		marco(RGBA, 4, true);\
+		marco(BGRA, 4, false);\
+		marco(RGB, 3, true);\
+		marco(BGR, 3, false);\
+		marco(Grey, 1, false);
+
+#ifdef _YXL_IMG_CODEC_STB_IMAGE_
 #include "image/stb_image/stb_image.h"
 #include "image/stb_image/stb_image_write.h"
-#include "image/webp/webp/encode.h"
-#include "image/webp/webp/decode.h"
 namespace YXL
 {
 	namespace Image
@@ -713,7 +718,6 @@ namespace YXL
 			for (int i(0); i < len; i += ch)
 				std::swap(ptr[i], ptr[i + 2]);
 		}
-
 		void DecodePNG(std::shared_ptr<unsigned char>& data, int& w, int& h, const int req_ch, CStr& in_data, const bool is_rgb)
 		{
 			int ch=0;
@@ -748,18 +752,10 @@ namespace YXL
 			}
 		}
 
-#define IMPL_ALL(marco) \
-		marco(RGBA, 4, true);\
-		marco(BGRA, 4, false);\
-		marco(RGB, 3, true);\
-		marco(BGR, 3, false);\
-		marco(Grey, 1, false);
-
 #define IMPL_DECODE_FUNC(name, ch, is_rgb) void DecodePNG_##name(std::shared_ptr<unsigned char>& data, int& w, int& h, CStr& in_data)\
 		{\
 			DecodePNG(data, w, h, ch, in_data, is_rgb);\
 		}
-
 		IMPL_ALL(IMPL_DECODE_FUNC);
 #undef IMPL_DECODE_FUNC
 
@@ -768,11 +764,19 @@ namespace YXL
 		{\
 			EncodePNG(out_data, out_data_size, img, w, h, ch, is_rgb);\
 		}
-	
 		IMPL_ALL(IMPL_ENCODE_FUNC);
 #undef IMPL_ENCODE_FUNC
+	}
+}
+#endif //_YXL_IMG_CODEC_STB_IMAGE_
 
-
+#ifdef _YXL_IMG_CODEC_WEBP_
+#include "image/webp/webp/encode.h"
+#include "image/webp/webp/decode.h"
+namespace YXL
+{
+	namespace Image
+	{
 		void DecodeWebP(std::shared_ptr<unsigned char>& out_data, int& w, int& h, const int req_ch, CStr& in_data, const bool is_rgb)
 		{
 			int _ch = req_ch == 1 ? 3 : req_ch;
@@ -837,32 +841,29 @@ namespace YXL
 			}
 			out_data = std::shared_ptr<unsigned char>(ptr);
 		}
-
 #define IMPL_DECODE_FUNC_WEBP(name, ch, is_rgb) \
 		void DecodeWebP_##name(std::shared_ptr<unsigned char>& img, int & w, int & h, CStr & in_data)\
 		{\
 			DecodeWebP(img, w, h, ch, in_data, is_rgb);\
 		}
-
 		IMPL_ALL(IMPL_DECODE_FUNC_WEBP);
 #undef IMPL_DECODE_FUNC_WEBP
-
 #define IMPL_ENCODE_FUNC_WEBP(name, ch, is_rgb) \
 		void EncodeWebP_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, const unsigned char* img, const int w, const int h, const float quality)\
 		{\
 			EncodeWebP(out_data, out_data_size, img, w, h, ch, is_rgb, quality);\
 		}
-
 		IMPL_ALL(IMPL_ENCODE_FUNC_WEBP);
 #undef IMPL_ENCODE_FUNC_WEBP
+	}
+}
+#endif //_YXL_IMG_CODEC_WEBP_
 
 #undef IMPL_ALL
-
-		}
-}
 #endif
 
-#ifdef _YXL_MINI_Z_
+#ifdef _YXL_COMPRESS_
+#ifdef _YXL_COMPRESS_MINI_Z_
 #include "miniz/miniz.h"
 #include "miniz/miniz_zip.h"
 namespace YXL
@@ -1158,9 +1159,11 @@ namespace YXL
 		}
 	}
 }
-#endif
+#endif //_YXL_COMPRESS_MINI_Z_
+#endif //_YXL_COMPRESS_
 
-#ifdef _YXL_HASH_
+#ifdef _YXL_CRYPTOGRAPHIC_
+#ifdef _YXL_CRYPTOGRAPHIC_HASH_
 namespace YXL
 {
 	namespace Hash
@@ -2710,9 +2713,9 @@ namespace YXL
 		}
 	}
 }
-#endif
+#endif //_YXL_CRYPTOGRAPHIC_HASH_
 
-#ifdef _YXL_CIPHER_
+#ifdef _YXL_CRYPTOGRAPHIC_CIPHER_
 namespace YXL
 {
 	namespace Cipher
@@ -3259,9 +3262,9 @@ namespace YXL
 
 	}
 }
-#endif
+#endif //_YXL_CRYPTOGRAPHIC_CIPHER_
 
-#ifdef _YXL_CRYPTO_
+#ifdef _YXL_CRYPTOGRAPHIC_CRYPTO_
 namespace YXL
 {
 	namespace Crypt
@@ -3270,7 +3273,9 @@ namespace YXL
 		bool _CryptoPPBase::_is_init = false;
 	}
 }
-#endif
+#endif //_YXL_CRYPTOGRAPHIC_CRYPTO_
+
+#endif //_YXL_CRYPTOGRAPHIC_
 
 #ifdef _YXL_GLFW_
 namespace YXL
@@ -3347,5 +3352,5 @@ namespace YXL
 	}
 }
 
-#endif
+#endif //_YXL_GLFW_
 

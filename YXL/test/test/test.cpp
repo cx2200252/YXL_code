@@ -66,7 +66,7 @@ namespace YXL_TEST
 	void TestZip()
 	{
 		std::cout << "*********************************************************************************" << std::endl;
-#ifndef _YXL_MINI_Z_
+#ifndef _YXL_COMPRESS_MINI_Z_
 		std::cout << "miniz not enable..." << std::endl;
 #else
 		{
@@ -145,7 +145,7 @@ namespace YXL_TEST
 	void TestNaCL()
 	{
 		std::cout << "*********************************************************************************" << std::endl;
-#ifndef _YXL_NACL_
+#ifndef _YXL_CRYPTOGRAPHIC_NACL_
 		std::cout << "NaCL not enable..." << std::endl;
 #else
 		typedef std::pair<std::string, std::string> KeyPair;
@@ -269,7 +269,7 @@ namespace YXL_TEST
 	void TestCrypto()
 	{
 		std::cout << "*********************************************************************************" << std::endl;
-#ifndef _YXL_CRYPTO_
+#ifndef _YXL_CRYPTOGRAPHIC_CRYPTO_
 		std::cout << "Cryptopp not enable..." << std::endl;
 #else
 		{
@@ -464,6 +464,7 @@ namespace YXL_TEST
 		int test_pix_y = 70;
 		std::cout << "pixel at (" << test_pix_x << "," << test_pix_y << ") in RGB order: (200,70,70)" << std::endl;;
 
+#ifdef _YXL_IMG_CODEC_STB_IMAGE_
 		std::cout << "---------test png codec---------" << std::endl;
 #define _TEST(in, out, ch)\
 		{\
@@ -482,7 +483,9 @@ namespace YXL_TEST
 		_TEST(RGBA, RGBA, 4);
 		_TEST(BGRA, RGBA, 4);
 #undef _TEST
+#endif
 
+#ifdef _YXL_IMG_CODEC_WEBP_
 		std::cout << "---------test webp codec---------" << std::endl;
 #define _TEST(in, out, ch)\
 		{\
@@ -501,6 +504,7 @@ namespace YXL_TEST
 		_TEST(RGBA, RGBA, 4);
 		_TEST(BGRA, RGBA, 4);
 #undef _TEST
+#endif
 
 #endif
 	}

@@ -18,11 +18,16 @@
 #define _YXL_GRAPHIC_
 //#define _YXL_IMG_PROC_
 //#define _YXL_IMG_CODEC_
-//#define _YXL_MINI_Z_
-//#define _YXL_HASH_
-//#define _YXL_CIPHER_
-//#define _YXL_NACL_
-//#define _YXL_CRYPTO_
+//#define _YXL_IMG_CODEC_STB_IMAGE_
+//#define _YXL_IMG_CODEC_WEBP_
+//#define _YXL_COMPRESS_
+//#define _YXL_COMPRESS_MINI_Z_
+//#define _YXL_COMPRESS_7Z_
+//#define _YXL_CRYPTOGRAPHIC_
+//#define _YXL_CRYPTOGRAPHIC_CIPHER_
+//#define _YXL_CRYPTOGRAPHIC_HASH_
+//#define _YXL_CRYPTOGRAPHIC_NACL_
+//#define _YXL_CRYPTOGRAPHIC_CRYPTO_
 
 //#define _YXL_GLFW_
 
@@ -54,10 +59,6 @@
 #define LIB_YXL_HELPER
 #endif
 
-#ifndef _YXL_OUT_STREAM_
-#undef _YXL_LOG_
-#endif
-
 namespace YXL
 {
 	typedef const std::string CStr;
@@ -72,16 +73,40 @@ namespace YXL
 #ifndef _WITH_WINDOWS_
 #undef _YXL_CONSOLE_
 #endif
+
 #ifndef _YXL_TRANSFORM_
 #undef _YXL_GRAPHIC_
 #endif
+
 #ifndef _WITH_OPENCV_
 #undef _YXL_IMG_PROC_
 #endif
-#if defined(_YXL_CRYPTO_) || defined(_YXL_NACL_)
-#define _YXL_ENCRYPT_DATA_
-#if defined(_YXL_MINI_Z_)
-#define _YXL_ENCRYPT_DATA_CONTAINER_
+
+#ifndef _YXL_OUT_STREAM_
+#undef _YXL_LOG_
+#endif
+
+#ifndef _YXL_IMG_CODEC_
+#undef _YXL_IMG_CODEC_STB_IMAGE_
+#undef _YXL_IMG_CODEC_WEBP_
+#endif
+
+#ifndef _YXL_COMPRESS_
+#undef _YXL_COMPRESS_MINI_Z_
+#undef _YXL_COMPRESS_7Z_
+#endif
+
+#ifndef _YXL_CRYPTOGRAPHIC_
+#undef _YXL_CRYPTOGRAPHIC_CIPHER_
+#undef _YXL_CRYPTOGRAPHIC_HASH_
+#undef _YXL_CRYPTOGRAPHIC_NACL_
+#undef _YXL_CRYPTOGRAPHIC_CRYPTO_
+#endif
+
+#if defined(_YXL_CRYPTOGRAPHIC_CRYPTO_) || defined(_YXL_CRYPTOGRAPHIC_NACL_)
+#define _YXL_CRYPTOGRAPHIC_ENCRYPT_DATA_
+#ifdef _YXL_COMPRESS_MINI_Z_
+#define _YXL_CRYPTOGRAPHIC_ENCRYPT_DATA_CONTAINER_
 #endif
 #endif
 
@@ -113,7 +138,7 @@ namespace YXL
 	cv::error(cv::Exception(CV_StsAssert, msg, __FUNCTION__, __FILE__, __LINE__) ); }\
 }
 
-#ifdef _WITH_OPENCV_WORLD_
+#ifndef _WITHOUT_OPENCV_WORLD_
 #pragma comment( lib, CV_LIB("world"))
 #else
 #pragma comment( lib, CV_LIB("core"))
@@ -206,7 +231,7 @@ namespace YXL
 			buf[i] = dist(e2);
 	}
 }
-#endif
+#endif //_YXL_OTHER_
 
 #ifdef _YXL_STRING_
 namespace YXL
@@ -253,9 +278,18 @@ namespace YXL
 			int ret = atoi(str.data() + pos_beg + 1);
 			return ret;
 		}
+
+		inline int GetFirstNumber(const std::string& str)
+		{
+			auto pos = str.find_first_of("0123456789");
+			if (pos == str.length())
+				return 0;
+			int ret = atoi(str.data() + pos);
+			return ret;
+		}
 	}
 }
-#endif
+#endif //_YXL_STRING_
 
 #ifdef _YXL_FILES_
 namespace YXL
@@ -637,7 +671,7 @@ namespace YXL
 #endif
 	};
 }
-#endif
+#endif //_YXL_FILES_
 
 #ifdef _YXL_PARAM_PARSER_
 namespace YXL
@@ -695,7 +729,7 @@ namespace YXL
 		}
 	}
 }
-#endif
+#endif //_YXL_PARAM_PARSER_
 
 #ifdef _YXL_THREAD_
 #include <mutex>
@@ -727,7 +761,7 @@ namespace YXL
 	};
 }
 
-#endif
+#endif //_YXL_THREAD_
 
 #ifdef _YXL_OUT_STREAM_
 namespace YXL
@@ -816,7 +850,7 @@ namespace YXL
 #endif
 	extern YXLOut yxlout;
 }
-#endif
+#endif //_YXL_OUT_STREAM_
 
 #ifdef _YXL_PRINT_
 namespace YXL
@@ -872,10 +906,10 @@ namespace YXL
 	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m, const std::string& padding = "")
 	{
 		for (auto iter = m.begin(); iter != m.end(); ++iter)
-			YXL::yxlout << padding << iter->first << '\t' << iter->second << "\n";
+			std::cout << padding << iter->first << '\t' << iter->second << "\n";
 	}
 }
-#endif
+#endif //_YXL_PRINT_
 
 #ifdef _YXL_LOG_
 namespace YXL
@@ -971,7 +1005,7 @@ namespace YXL
 	};
 }
 
-#endif
+#endif //_YXL_LOG_
 
 #ifdef _YXL_TIME_
 namespace YXL
@@ -1159,7 +1193,7 @@ namespace YXL
 		std::chrono::time_point<std::chrono::high_resolution_clock> _last;
 	};
 }
-#endif
+#endif //_YXL_TIME_
 
 #ifdef _YXL_CONSOLE_
 namespace YXL
@@ -1234,7 +1268,7 @@ namespace YXL
 		}
 	}
 }
-#endif
+#endif //_YXL_CONSOLE_
 
 #ifdef _YXL_TRANSFORM_
 namespace YXL
@@ -1531,7 +1565,7 @@ namespace YXL
 #endif
 	}
 }
-#endif
+#endif //_YXL_TRANSFORM_
 
 #ifdef _YXL_GRAPHIC_
 namespace YXL
@@ -1601,7 +1635,7 @@ namespace YXL
 	}
 #endif
 }
-#endif
+#endif //_YXL_GRAPHIC_
 
 #ifdef _YXL_UNION_FIND_
 namespace YXL
@@ -1654,7 +1688,7 @@ namespace YXL
 		std::map<int, std::vector<int> > _groups;
 	};
 }
-#endif
+#endif //_YXL_UNION_FIND_
 
 #ifdef _YXL_KD_TREE_
 namespace YXL
@@ -1760,7 +1794,7 @@ namespace YXL
 		Node* _root = nullptr;
 	};
 }
-#endif
+#endif //_YXL_KD_TREE_
 
 #ifdef _YXL_IMG_PROC_
 namespace YXL
@@ -1770,28 +1804,35 @@ namespace YXL
 #endif
 
 #ifdef _YXL_IMG_CODEC_
+#define DECLARE_ALL(marco) \
+	marco(RGBA);\
+	marco(BGRA);\
+	marco(RGB);\
+	marco(BGR);\
+	marco(Grey);
+
+#ifdef _YXL_IMG_CODEC_STB_IMAGE_
 namespace YXL
 {
 	namespace Image
 	{
 		//encode
-
-#define DECLARE_ALL(marco) \
-		marco(RGBA);\
-		marco(BGRA);\
-		marco(RGB);\
-		marco(BGR);\
-		marco(Grey);
-
 #define DECODE_FUNC(name) void DecodePNG_##name(std::shared_ptr<unsigned char>& img, int& w, int& h, CStr& in_data);
 		DECLARE_ALL(DECODE_FUNC)
 #undef DECODE_FUNC
 		//decode
-
 #define ENCODE_FUNC(name) void EncodePNG_##name(std::shared_ptr<unsigned char>& out_data, int& out_data_size, const unsigned char* img, const int w, const int h);
 		DECLARE_ALL(ENCODE_FUNC)
 #undef ENCODE_FUNC
+	}
+}
+#endif //_YXL_IMG_CODEC_STB_IMAGE_
 
+#ifdef _YXL_IMG_CODEC_WEBP_
+namespace YXL
+{
+	namespace Image
+	{
 		//webp
 #define DECODE_FUNC_WEBP(name) void DecodeWebP_##name(std::shared_ptr<unsigned char>& img, int& w, int& h, CStr& in_data);
 		DECLARE_ALL(DECODE_FUNC_WEBP);
@@ -1803,13 +1844,15 @@ namespace YXL
 		//	>=100: lossless
 		DECLARE_ALL(ENCODE_FUNC_WEBP);
 #undef ENCODE_FUNC_WEBP
-
-#undef DECLARE_ALL
 	}
 }
-#endif
+#endif //_YXL_IMG_CODEC_WEBP_
 
-#ifdef _YXL_MINI_Z_
+#undef DECLARE_ALL
+#endif //_YXL_IMG_CODEC_
+
+#ifdef _YXL_COMPRESS_
+#ifdef _YXL_COMPRESS_MINI_Z_
 #include <sstream>
 namespace YXL
 {
@@ -1941,9 +1984,14 @@ namespace YXL
 		};
 	}
 }
+#endif //_YXL_COMPRESS_MINI_Z_
+
+
 #endif
 
-#ifdef _YXL_CRYPTO_
+#ifdef _YXL_CRYPTOGRAPHIC_
+
+#ifdef _YXL_CRYPTOGRAPHIC_CRYPTO_
 
 namespace YXL
 {
@@ -1954,7 +2002,7 @@ namespace YXL
 		//hex
 		_Encode(HexEncode);
 		_Encode(HexDecode);
-		_EncodeFile(HexEncode_File);
+		_EncodeFile(HexEncode);
 		_EncodeFile(HexDecode);
 		//base64
 		_Encode(Base64Encode);
@@ -1965,9 +2013,9 @@ namespace YXL
 #undef _EncodeFile
 	}
 }
-#endif
+#endif //_YXL_CRYPTOGRAPHIC_CRYPTO_
 
-#ifdef _YXL_ENCRYPT_DATA_
+#ifdef _YXL_CRYPTOGRAPHIC_ENCRYPT_DATA_
 namespace YXL
 {
 	namespace Crypt
@@ -2090,7 +2138,7 @@ namespace YXL
 			}
 		};
 
-#ifdef _YXL_ENCRYPT_DATA_CONTAINER_
+#ifdef _YXL_CRYPTOGRAPHIC_ENCRYPT_DATA_CONTAINER_
 		template<typename _EncryptedData> class DataContainer
 		{
 		public:
@@ -2142,9 +2190,9 @@ namespace YXL
 #endif
 	}
 }
-#endif
+#endif //_YXL_CRYPTOGRAPHIC_ENCRYPT_DATA_
 
-#ifdef _YXL_NACL_
+#ifdef _YXL_CRYPTOGRAPHIC_NACL_
 #include "tweetnacl/tweetnacl.h"
 namespace YXL
 {
@@ -2292,14 +2340,14 @@ namespace YXL
 		};
 
 		typedef EncryptedData<SymEncryptorNaCL, AsymEncryptorNaCL, HasherNaCL> EncryptedDataNaCL;
-#ifdef _YXL_ENCRYPT_DATA_CONTAINER_
+#ifdef _YXL_CRYPTOGRAPHIC_ENCRYPT_DATA_CONTAINER_
 		typedef DataContainer<EncryptedDataNaCL> DataContainerNaCL;
 #endif
 	}
 }
-#endif
+#endif //_YXL_CRYPTOGRAPHIC_NACL_
 
-#ifdef _YXL_CRYPTO_
+#ifdef _YXL_CRYPTOGRAPHIC_CRYPTO_
 #include "cryptopp/aes.h"
 #include "cryptopp/rsa.h"
 #include "cryptopp/randpool.h"
@@ -2787,9 +2835,9 @@ namespace YXL
 		typedef CodecBase<CryptoPP::Base64Encoder, CryptoPP::Base64Decoder> Base64;
 	}
 }
-#endif
+#endif //_YXL_CRYPTOGRAPHIC_CRYPTO_
 
-#ifdef _YXL_HASH_
+#ifdef _YXL_CRYPTOGRAPHIC_HASH_
 namespace YXL
 {
 	namespace Hash
@@ -2804,9 +2852,9 @@ namespace YXL
 		std::string LIB_YXL_HELPER MD5(CStr& str);
 	}
 }
-#endif
+#endif //_YXL_CRYPTOGRAPHIC_HASH_
 
-#ifdef _YXL_CIPHER_
+#ifdef _YXL_CRYPTOGRAPHIC_CIPHER_
 namespace YXL
 {
 	namespace Cipher
@@ -2825,7 +2873,9 @@ namespace YXL
 	}
 }
 
-#endif
+#endif //_YXL_CRYPTOGRAPHIC_CIPHER_
+
+#endif //_YXL_CRYPTOGRAPHIC_
 
 #ifdef _YXL_GLFW_
 namespace YXL
@@ -2882,7 +2932,7 @@ namespace YXL
 		int _frame_id = 0;
 	};
 }
-#endif
+#endif //_YXL_GLFW_
 
 
 #endif
