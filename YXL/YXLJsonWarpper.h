@@ -241,15 +241,29 @@ namespace YXL
 			}\
 		};
 
+#define _GETTER_IMPLEMENT_V2(type, name, name2)\
+		template<>\
+		struct ValueGetter<type> {\
+			static type Get(const rapidjson::Value & val)\
+			{\
+				return val.Is##name() ? val.Get##name() : (type)val.Get##name2();\
+			}\
+			static bool IsType(const rapidjson::Value & val)\
+			{\
+				return val.Is##name() || val.Is##name2();\
+			}\
+		};
+
 		_GETTER_IMPLEMENT(bool, Bool)
 		_GETTER_IMPLEMENT(int, Int)
 		_GETTER_IMPLEMENT(unsigned int, Uint)
 		_GETTER_IMPLEMENT(int64_t, Int64)
 		_GETTER_IMPLEMENT(uint64_t, Uint64)
-		_GETTER_IMPLEMENT(float, Float)
-		_GETTER_IMPLEMENT(double, Double)
+		_GETTER_IMPLEMENT_V2(float, Float, Int)
+		_GETTER_IMPLEMENT_V2(double, Double, Int)
 
 #undef _GETTER_IMPLEMENT
+#undef _GETTER_IMPLEMENT_V2
 
 		template<>
 		struct ValueGetter<std::string> {
