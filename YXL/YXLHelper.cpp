@@ -68,7 +68,7 @@ namespace YXL
 		return ret;
 	}
 
-	std::string File::BrowseFile(const  std::vector<std::pair<std::string, std::string>>& in_filters, bool isOpen, const std::string & def_dir, CStr & title)
+	const char * YXL::File::_BrowseFile(DWORD flags, const std::vector<std::pair<std::string, std::string>>& in_filters, bool isOpen, const std::string & def_dir, CStr & title)
 	{
 		std::string filters;
 		{
@@ -116,13 +116,13 @@ namespace YXL
 		ofn.nMaxFile = MAX_PATH;
 		ofn.lpstrFilter = filters.c_str();
 		ofn.nFilterIndex = 1;
-		ofn.Flags = OFN_PATHMUSTEXIST;
+		ofn.Flags = flags;
 
 		ofn.lpstrInitialDir = &opened_dir[0];
 		ofn.lpstrTitle = title.c_str();
 
 		if (isOpen) {
-			ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+			ofn.Flags |= OFN_FILEMUSTEXIST;
 			GetOpenFileNameA(&ofn);
 			SetCurrentDirectoryA(dir.c_str());
 			return Buffer;
@@ -132,7 +132,34 @@ namespace YXL
 
 		SetCurrentDirectoryA(dir.c_str());
 
-		return std::string(Buffer);
+		return Buffer;
+	}
+
+	std::string File::BrowseFile(const  std::vector<std::pair<std::string, std::string>>& in_filters, bool isOpen, const std::string & def_dir, CStr & title)
+	{
+		return _BrowseFile(OFN_PATHMUSTEXIST | OFN_EXPLORER, in_filters, isOpen, def_dir, title);
+	}
+
+	vecS YXL::File::BrowseFileMultiSelect(const std::vector<std::pair<std::string, std::string>>& filters, bool isOpen, const std::string & def_dir, CStr & title)
+	{
+		auto buf = _BrowseFile(OFN_PATHMUSTEXIST | OFN_EXPLORER | OFN_ALLOWMULTISELECT, filters, isOpen, def_dir, title);
+		vecS ret;
+
+		int len = strlen(buf);
+
+		std::string dir = buf + std::string("\\");
+		buf += len + 1;
+
+		while (true)
+		{
+			len = strlen(buf);
+			if (0 == len)
+				break;
+			ret.push_back(dir + buf);
+			buf += len + 1;
+		}
+
+		return ret;
 	}
 
 	std::string File::BrowseFolder(CStr & title)

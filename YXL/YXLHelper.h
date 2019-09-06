@@ -492,8 +492,12 @@ namespace YXL
 		//return high-low
 		static std::pair<DWORD, DWORD> GetFileInfo(const std::string& file_path, FileInfo fi);
 
+	private:
+		static const char* _BrowseFile(DWORD flags, const std::vector<std::pair<std::string, std::string>>& filters, bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
+	public:
 		//filters: pair of "text-filter", {"Images", "*.jpg;*.png"}
 		static std::string BrowseFile(const std::vector<std::pair<std::string, std::string>>& filters, bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
+		static vecS BrowseFileMultiSelect(const std::vector<std::pair<std::string, std::string>>& filters, bool isOpen = true, const std::string& dir = "", CStr& title = "BrowseFile");
 		static std::string BrowseFolder(CStr& title = "BrowseFolder");
 
 		// Get file names from a wildcard. Eg: GetNames("D:\\*.jpg", imgNames);
