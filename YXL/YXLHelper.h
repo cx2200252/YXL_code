@@ -238,6 +238,10 @@ namespace YXL
 {
 	namespace Str
 	{
+		inline bool IsStartWith(const std::string& str, const std::string& ref)
+		{
+			return str.length() < ref.length() ? false : str.substr(0, ref.length()) == ref;
+		}
 		inline std::string Esacpe(const std::string& str, const std::string escape_ch="\t ")
 		{
 			auto beg = str.find_first_not_of(escape_ch);

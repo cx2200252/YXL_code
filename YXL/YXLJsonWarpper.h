@@ -489,6 +489,50 @@ namespace YXL
 				AddJSONValue(name, val, _doc);
 			}
 
+			void SetJSONValue(const std::string& path, rapidjson::Value& v)
+			{
+				auto Spilt = [](std::vector<std::string>& res, const std::string& src, const std::string& splitChars)
+				{
+					std::size_t prePos = src.find_first_not_of(splitChars);
+					std::size_t pos = src.find_first_of(splitChars, prePos);
+					while (std::string::npos != pos)
+					{
+						res.push_back(src.substr(prePos, pos - prePos));
+						prePos = src.find_first_not_of(splitChars, pos + 1);
+						pos = src.find_first_of(splitChars, prePos);
+					}
+					if (std::string::npos != prePos)
+						res.push_back(src.substr(prePos, src.length() - prePos));
+				};
+				auto func = [&](const std::string& name, rapidjson::Value* par) {
+					auto iter = par->FindMember(JsonParseString(name, _doc));
+					if (iter != par->MemberEnd() && iter->value.IsObject() == false)
+						par->EraseMember(iter);
+					iter = par->FindMember(JsonParseString(name, _doc));
+					if (iter == par->MemberEnd())
+					{
+						par->AddMember(JsonParseString(name, _doc), rapidjson::Value(rapidjson::kObjectType), _doc.GetAllocator());
+						iter = par->FindMember(JsonParseString(name, _doc));
+					}
+					return &iter->value;
+				};
+
+				std::vector<std::string> node_path;
+				Spilt(node_path, path, "/");
+
+				auto dst = node_path.back();
+				node_path.pop_back();
+
+				rapidjson::Value* par = &_doc;
+				for (auto v : node_path)
+					par = func(v, par);
+
+				auto name = JsonParseString(dst, _doc);
+				if (par->HasMember(name))
+					par->EraseMember(dst.c_str());
+				par->AddMember(name, v, _doc.GetAllocator());
+			}
+
 		public:
 			//write (overwrite)
 			template<typename type> void SetMember(const std::string& name, const type& val, rapidjson::Value& parent)
