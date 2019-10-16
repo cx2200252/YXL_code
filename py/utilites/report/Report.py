@@ -11,6 +11,8 @@ import reportlab.lib.colors as Colors
 import reportlab.lib.units as Units
 import reportlab.pdfbase.ttfonts
 import os
+import sys
+import PIL.Image
 
 sys_font_dir="C:/Windows/Fonts/"
 font_name_mapping={
@@ -334,6 +336,7 @@ class RepEleImage(ReportElement):
         ReportElement.__init__(self, par)
         self.border=RepEleRect(self)
         self.border.setBorder(False)
+        self.setResize(True)
     def set(self, config):
         if "img_path" in config:
             self.setImage(config["img_path"])
@@ -349,14 +352,14 @@ class RepEleImage(ReportElement):
             self.border.setAbs(config["is_abs"])
         if "keep_aspect" in config:
             self.setAspect(config["keep_aspect"])
+        if "is_resize" in config:
+            self.setResize(config["is_resize"])
         ReportElement.set(self, config)
     def setImage(self, img_path):
-        if os.path.exists(img_path) == False:
+        if os.path.isfile(img_path) == False:
             return
         # print("loading: %s"%img_path)
         self.img_path=img_path
-        self.img=ImageReader(img_path)
-        self.img_size=self.img.getSize()
     def setBorder(self, has_border):
         self.has_border=has_border
     def setStrokeColor(self, color):
@@ -365,14 +368,31 @@ class RepEleImage(ReportElement):
         self.border_width=width
     def setAspect(self, is_keep):
         self.is_keep_aspect=is_keep
+    def setResize(self, is_resize):
+        self.is_resize=is_resize
     def getBorderWidth(self):
         return self.getAbsRelativeVal("border_width", 1, 0.01, self.par.w)
+    def resize(self, img, w, h):
+        if sys.platform[0:4] == 'java':
+            return img
+        else:
+            tmp=img._image.resize((int(w),int(h)), PIL.Image.ANTIALIAS)
+            try:
+                tmp.save("tmp.jpg")
+                ret=ImageReader("tmp.jpg")
+            except:
+                tmp.save("tmp.png")
+                ret = ImageReader("tmp.png")
+
+            return ret
     def draw(self, doc, is_draw_child=True):
         # draw border
         # print("ReportImage", self.getParentRect(), self.getDrawRect(doc))
         x, y, w, h = self.getDrawRect(doc)
 
-        if hasattr(self, "img")==True:
+        if hasattr(self, "img_path")==True:
+            self.img = ImageReader(self.img_path)
+            self.img_size = self.img.getSize()
             _doc = doc.getDoc()
             if self.getVal("is_keep_aspect", True)==True:
                 r0=self.img._width/self.img._height
@@ -385,7 +405,11 @@ class RepEleImage(ReportElement):
                     h2=w/r0
                     y=y+(h-h2)/2
                     h=h2
-            _doc.drawImage(self.img, x, y, w, h)
+            if self.is_resize:
+                img_new=self.resize(self.img, w, h)
+                _doc.drawImage(img_new, x, y, w, h)
+            else:
+                _doc.drawImage(self.img, x, y, w, h)
 
         if is_draw_child:
             self.border.setPos([0,0])
