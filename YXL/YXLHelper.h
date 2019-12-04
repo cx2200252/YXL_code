@@ -291,6 +291,49 @@ namespace YXL
 			int ret = atoi(str.data() + pos);
 			return ret;
 		}
+
+#ifdef _WITH_WINDOWS_
+		inline std::string UTF8ToGBK(std::string utf8)
+		{
+			wchar_t * lpUnicodeStr = NULL;
+			int nRetLen = 0;
+			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, NULL, NULL);
+			lpUnicodeStr = new WCHAR[nRetLen + 1];
+			nRetLen = ::MultiByteToWideChar(CP_UTF8, 0, &utf8[0], -1, lpUnicodeStr, nRetLen);
+			if (!nRetLen)
+			{
+				delete[] lpUnicodeStr;
+				return 0;
+			}
+			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, NULL, NULL, NULL, NULL);
+			char* tmp = new char[nRetLen];
+			nRetLen = ::WideCharToMultiByte(CP_ACP, 0, lpUnicodeStr, -1, tmp, nRetLen, NULL, NULL);
+			delete[] lpUnicodeStr;
+			std::string ret = tmp;
+			delete[] tmp;
+			return ret;
+		}
+
+		inline std::string GBKToUTF8(std::string gbk)
+		{
+			wchar_t * lpUnicodeStr = NULL;
+			int nRetLen = 0;
+			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, NULL, NULL);
+			lpUnicodeStr = new WCHAR[nRetLen + 1];
+			nRetLen = ::MultiByteToWideChar(CP_ACP, 0, &gbk[0], -1, lpUnicodeStr, nRetLen);
+			if (!nRetLen)
+			{
+				delete[] lpUnicodeStr;
+				return 0;
+			}
+			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, NULL, 0, NULL, NULL);
+			char* tmp = new char[nRetLen];
+			nRetLen = ::WideCharToMultiByte(CP_UTF8, 0, lpUnicodeStr, -1, (char *)tmp, nRetLen, NULL, NULL);
+			std::string ret = tmp;
+			delete[] tmp;
+			return ret;
+		}
+#endif
 	}
 }
 #endif //_YXL_STRING_
