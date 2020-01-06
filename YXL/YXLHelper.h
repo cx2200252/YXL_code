@@ -23,9 +23,9 @@
 //#define _YXL_COMPRESS_
 //#define _YXL_COMPRESS_MINI_Z_
 //#define _YXL_COMPRESS_7Z_
-//#define _YXL_CRYPTOGRAPHIC_
+#define _YXL_CRYPTOGRAPHIC_
 //#define _YXL_CRYPTOGRAPHIC_CIPHER_
-//#define _YXL_CRYPTOGRAPHIC_HASH_
+#define _YXL_CRYPTOGRAPHIC_HASH_
 //#define _YXL_CRYPTOGRAPHIC_NACL_
 //#define _YXL_CRYPTOGRAPHIC_CRYPTO_
 
@@ -70,6 +70,12 @@ namespace YXL
 }
 
 //check marco
+#ifndef _WIN32
+#ifdef _WITH_WINDOWS_
+#undef _WITH_WINDOWS_
+#endif
+#endif
+
 #ifndef _WITH_WINDOWS_
 #undef _YXL_CONSOLE_
 #endif
@@ -114,6 +120,12 @@ namespace YXL
 #ifdef _YXL_GLFW_
 #include <gl/glew.h>
 #include <GLFW/glfw3.h>
+#endif
+
+#ifdef __linux__ 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 #endif
 
 #ifdef _WITH_OPENCV_
@@ -190,6 +202,12 @@ namespace YXL
 #endif
 #endif
 
+#ifdef _YXL_OUT_STREAM_
+#define YXL_COUT yxlout
+#else
+#define YXL_COUT std::cout
+#endif
+
 #ifdef _YXL_OTHER_
 #include <sstream>
 namespace YXL
@@ -229,6 +247,15 @@ namespace YXL
 		std::mt19937 e2(seed2);
 		for (size_t i(0); i != len; ++i)
 			buf[i] = dist(e2);
+	}
+
+	template<typename type> type Random(std::vector<unsigned int> seed)
+	{
+		std::uniform_int_distribution<> dist;
+		std::seed_seq seed2;
+		seed2.generate(seed.begin(), seed.end());
+		std::mt19937 e2(seed2);
+		return dist(e2);
 	}
 }
 #endif //_YXL_OTHER_
@@ -718,6 +745,9 @@ namespace YXL
 			fin.close();
 			return  ret;
 		}
+#ifdef __linux__
+		static bool MkDir(CStr&  path);
+#endif //__linux__
 #endif
 #endif
 	};
@@ -839,7 +869,7 @@ namespace YXL
 		template<typename type>
 		YXLOutStream& operator<<(type val)
 		{
-			std::cout << val;
+			YXL_COUT << val;
 			if ("" != _log_file)
 			{
 				std::ofstream fout(_log_file, std::ios::app);
@@ -850,7 +880,7 @@ namespace YXL
 		}
 		YXLOutStream& operator<<(_Myt& (__cdecl *_Pfn)(_Myt&))
 		{
-			std::cout << _Pfn;
+			YXL_COUT << _Pfn;
 			if ("" != _log_file)
 			{
 				std::ofstream fout(_log_file, std::ios::app);
@@ -861,7 +891,7 @@ namespace YXL
 		}
 		YXLOutStream& operator<<(_Myios& (__cdecl *_Pfn)(_Myios&))
 		{
-			std::cout << _Pfn;
+			YXL_COUT << _Pfn;
 			if ("" != _log_file)
 			{
 				std::ofstream fout(_log_file, std::ios::app);
@@ -872,7 +902,7 @@ namespace YXL
 		}
 		YXLOutStream& operator<<(std::ios_base& (__cdecl *_Pfn)(std::ios_base&))
 		{
-			std::cout << _Pfn;
+			YXL_COUT << _Pfn;
 			if ("" != _log_file)
 			{
 				std::ofstream fout(_log_file, std::ios::app);
@@ -908,39 +938,39 @@ namespace YXL
 {
 	template<typename type> void _print(type t, const int i)
 	{
-		std::cout << '\t' << t[i];
+		YXL_COUT << '\t' << t[i];
 	}
 	template<typename type> void _print2(type t, const int i)
 	{
 		if (i)
-			std::cout << ',';
-		std::cout << t[i];
+			YXL_COUT << ',';
+		YXL_COUT << t[i];
 	}
 
 	template<typename... type> void PrintVector(const int vec_len, const type*... vecs)
 	{
 		const int arg_cnt = sizeof...(vecs);
-		std::cout << "[";
+		YXL_COUT << "[";
 		for (int i(0); i != vec_len; ++i)
 		{
 			if (i)
-				std::cout << ",";
+				YXL_COUT << ",";
 			if (arg_cnt>1)
-				std::cout << "(";
+				YXL_COUT << "(";
 			int tmp[] = { (_print2(vecs, i), 0)... };
 			if (arg_cnt>1)
-				std::cout << ")";
+				YXL_COUT << ")";
 		}
-		std::cout << "]" << std::endl;
+		YXL_COUT << "]" << std::endl;
 	}
 
 	template<typename... type> void PrintVectorAsRow(int vec_len, type*... vecs)
 	{
 		for (int i(0); i != vec_len; ++i)
 		{
-			std::cout << i << ":";
+			YXL_COUT << i << ":";
 			int tmp[] = { (_print(vecs, i), 0)... };
-			std::cout << "\n";
+			YXL_COUT << "\n";
 		}
 
 	}
@@ -957,7 +987,7 @@ namespace YXL
 	template<typename key, typename val> void PrintMapAsRows(std::map<key, val>& m, const std::string& padding = "")
 	{
 		for (auto iter = m.begin(); iter != m.end(); ++iter)
-			std::cout << padding << iter->first << '\t' << iter->second << "\n";
+			YXL_COUT << padding << iter->first << '\t' << iter->second << "\n";
 	}
 }
 #endif //_YXL_PRINT_
@@ -2079,7 +2109,7 @@ namespace YXL
 				if (key.length() != len)
 				{
 					key.resize(len, ' ');
-					//std::cout << txt << " resize to \"" << key << "\"" << std::endl;
+					//YXL_COUT << txt << " resize to \"" << key << "\"" << std::endl;
 				}
 			}
 		};
@@ -2219,7 +2249,7 @@ namespace YXL
 			{
 				auto file = _zip->GetFile(fn);
 				if (nullptr == file)
-					std::cout << "[error] file not found, please check upper/lower case: " << fn << std::endl;
+					YXL_COUT << "[error] file not found, please check upper/lower case: " << fn << std::endl;
 				else
 					_files_access_flag[fn] = true;
 				return file;
@@ -2683,7 +2713,7 @@ namespace YXL
 				}
 				catch (const Exception& e)
 				{
-					std::cout << e.GetWhat() << std::endl;
+					YXL_COUT << e.GetWhat() << std::endl;
 					return false;
 					//throw e;
 				}
@@ -2701,7 +2731,7 @@ namespace YXL
 				}
 				catch (const Exception& e)
 				{
-					std::cout << e.GetWhat() << std::endl;
+					YXL_COUT << e.GetWhat() << std::endl;
 					return false;
 					//throw e;
 				}
@@ -2810,7 +2840,7 @@ namespace YXL
 				}
 				catch (const Exception& e)
 				{
-					std::cout << e.GetWhat() << std::endl;
+					YXL_COUT << e.GetWhat() << std::endl;
 					return false;
 					//throw e;
 				}
@@ -2840,7 +2870,7 @@ namespace YXL
 				}
 				catch (const Exception& e)
 				{
-					std::cout << e.GetWhat() << std::endl;
+					YXL_COUT << e.GetWhat() << std::endl;
 					return false;
 					//throw e;
 				}
@@ -2985,5 +3015,6 @@ namespace YXL
 }
 #endif //_YXL_GLFW_
 
+#undef YXL_COUT
 
 #endif

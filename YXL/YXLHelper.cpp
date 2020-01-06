@@ -602,6 +602,26 @@ namespace YXL
 		if (waiteF)
 			proc.waitForFinished();
 	}
+#else
+#ifdef __linux__
+	bool MkDir(CStr&  path)
+	{
+		std::string dir = path;
+		for (auto& ch : dir)
+		{
+			if ('/' != ch)
+				continue;
+			ch = '\0';
+			if (access(dir.c_str(), NULL) != 0)
+			{
+				int ret = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+				if (0 != ret)
+					break;
+			}
+			ch = '/';
+	}
+	}
+#endif
 
 #endif
 #endif
