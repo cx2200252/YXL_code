@@ -286,9 +286,9 @@ namespace YXL
 			return res;
 		}
 
-		inline void Spilt(std::vector<std::string>& res, const std::string& src, const std::string& splitChars)
+		inline void Split(std::vector<std::string>& res, const std::string& src, const std::string& splitChars)
 		{
-			std::size_t prePos = src.find_first_not_of(splitChars);
+			std::size_t prePos = 0;// src.find_first_not_of(splitChars);
 			std::size_t pos = src.find_first_of(splitChars, prePos);
 			while (std::string::npos != pos)
 			{
@@ -420,7 +420,8 @@ namespace YXL
 		}
 		static std::string GetExtention(CStr name)
 		{
-			return name.substr(name.find_last_of('.'));
+			auto pos = name.find_last_of('.');
+			return pos != std::string::npos ? name.substr(pos) : "";
 		}
 		static void WriteNullFile(CStr& fileName) 
 		{
